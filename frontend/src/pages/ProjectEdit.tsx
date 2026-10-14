@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link as RouterLink, useParams } from 'react-router-dom';
-import { Alert, Box, Button, Chip, CircularProgress, Paper, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, CircularProgress, Paper, TextField, Typography } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { ApiError, getProject, saveProject } from '../api';
 import type { Conflict, Editable, KeyDate, Project, Sector, Stage } from '../types';
@@ -133,7 +133,7 @@ export default function ProjectEdit() {
 
   const invalid = !!form && (!form.name.trim() || !form.country.trim() || form.key_dates.some((d) => !d.label.trim() || !d.date));
 
-  // Sends the save; handles saved, conflict, and a 504 that carries the current data (verify once, then report).
+  // Always sends the base the person loaded: it only changes after a save is acknowledged, so others' changes are never overwritten.
   const send = async (from: Editable, resolutions?: Record<string, 'mine' | 'theirs'>, verifying = false): Promise<void> => {
     if (!form) return;
     setPhase(verifying ? 'verifying' : 'saving');
@@ -152,7 +152,7 @@ export default function ProjectEdit() {
           applySaved({ ...current, id } as Project);
           return;
         }
-        return send(pickEditable(current), resolutions, true);
+        return send(from, resolutions, true);
       }
       setSaveError(err instanceof Error ? err.message : 'Unknown error');
       setPhase('error');
@@ -179,7 +179,7 @@ export default function ProjectEdit() {
   };
 
   const onResolve = (resolutions: Record<string, 'mine' | 'theirs'>) => {
-    if (conflict) void send(conflict.current, resolutions);
+    if (conflict && base) void send(base, resolutions);
   };
 
   if (load.kind === 'loading') {
@@ -233,12 +233,12 @@ export default function ProjectEdit() {
         {phase === 'error' && (
           <Alert severity="error" sx={{ mb: 3 }}>{saveError || 'Could not save.'}</Alert>
         )}
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'minmax(0,1fr) 360px' }, gap: 3, alignItems: 'start' }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0,1fr)', md: 'minmax(0,1fr) 360px' }, gap: 3, alignItems: 'start' }}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
               <Typography component="h2" sx={{ fontSize: 18, fontWeight: 600 }}>General data</Typography>
               <Typography color="text.secondary" sx={{ fontSize: 14, mb: 3 }}>Fields with a blue border have unsaved changes.</Typography>
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: { xs: 2.5, md: 3 } }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0,1fr)', md: 'minmax(0,1fr) minmax(0,1fr)' }, gap: { xs: 2.5, md: 3 } }}>
                 <TextField
                   label="Name" value={form.name} onChange={(e) => edit({ name: e.target.value })}
                   error={showErrors && !form.name.trim()} helperText={showErrors && !form.name.trim() ? 'Required' : undefined}
@@ -274,10 +274,16 @@ export default function ProjectEdit() {
           <Paper variant="outlined" component="aside" sx={{ p: { xs: 2, md: 3 } }}>
             <Typography component="h2" sx={{ fontSize: 18, fontWeight: 600 }}>Linked companies</Typography>
             <Typography color="text.secondary" sx={{ fontSize: 14, mb: 2 }}>Read-only in this version. Sent unchanged when you save.</Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              {form.linked_companies.length === 0 && <Typography color="text.secondary">No linked companies</Typography>}
+            {form.linked_companies.length === 0 && <Typography color="text.secondary">No linked companies</Typography>}
+            <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0 }}>
               {form.linked_companies.map((c, i) => (
-                <Chip key={i} variant="outlined" label={`${c.name} · ${ROLES[c.role] ?? c.role}`} />
+                <Box
+                  component="li" key={i}
+                  sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, py: 1.25, borderTop: i === 0 ? 'none' : '1px solid', borderColor: 'divider' }}
+                >
+                  <Typography sx={{ fontSize: 15 }}>{c.name}</Typography>
+                  <Typography color="text.secondary" sx={{ fontSize: 14, textAlign: 'right' }}>{ROLES[c.role] ?? c.role}</Typography>
+                </Box>
               ))}
             </Box>
           </Paper>

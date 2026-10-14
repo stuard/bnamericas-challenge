@@ -28,7 +28,7 @@ vi.mock('../components/ConflictDialog', () => ({
 }));
 
 const project: Project = {
-  id: '12',
+  id: 'P-1001',
   name: 'Solar Atacama',
   sector: 'energy',
   country: 'Chile',
@@ -40,7 +40,7 @@ const project: Project = {
 
 function renderPage() {
   return render(
-    <MemoryRouter initialEntries={['/projects/12']}>
+    <MemoryRouter initialEntries={['/projects/P-1001']}>
       <Routes>
         <Route path="/projects/:id" element={<ProjectEdit />} />
       </Routes>
@@ -59,9 +59,10 @@ describe('ProjectEdit', () => {
     const get = vi.spyOn(api, 'getProject').mockResolvedValue(project);
     renderPage();
     expect(await screen.findByDisplayValue('Solar Atacama')).toBeInTheDocument();
-    expect(get).toHaveBeenCalledWith('12');
+    expect(get).toHaveBeenCalledWith('P-1001');
     expect(screen.getByDisplayValue('Award')).toBeInTheDocument();
-    expect(screen.getByText('Atacama SpA · Owner')).toBeInTheDocument();
+    expect(screen.getByText('Atacama SpA')).toBeInTheDocument();
+    expect(screen.getByText('Owner')).toBeInTheDocument();
     expect(screen.getByText(/Sent unchanged when you save/)).toBeInTheDocument();
     expect(bar()).toBe('clean:0');
   });
@@ -107,7 +108,7 @@ describe('ProjectEdit', () => {
     await userEvent.click(screen.getByText('Save'));
     await waitFor(() => expect(bar()).toBe('saved:0'));
     const [id, base, mine] = save.mock.calls[0];
-    expect(id).toBe('12');
+    expect(id).toBe('P-1001');
     expect(base.name).toBe('Solar Atacama');
     expect(mine.name).toBe('Solar Atacama II');
     expect(mine.linked_companies).toEqual(project.linked_companies);
@@ -125,7 +126,7 @@ describe('ProjectEdit', () => {
     expect(screen.getAllByText('Required').length).toBeGreaterThan(0);
   });
 
-  it('opens the conflict dialog and re-sends with resolutions and the conflict current as base', async () => {
+  it('opens the conflict dialog and re-sends with resolutions and the ORIGINAL base', async () => {
     vi.spyOn(api, 'getProject').mockResolvedValue(project);
     const theirs = { ...project, name: 'Their name', stage: 'financing' as const };
     const save = vi
@@ -141,8 +142,8 @@ describe('ProjectEdit', () => {
     await userEvent.click(screen.getByText('Resolve mine'));
     await waitFor(() => expect(bar()).toBe('saved:0'));
     const [, base2, mine2, res] = save.mock.calls[1];
-    expect(base2.name).toBe('Their name');
-    expect(base2.stage).toBe('financing');
+    expect(base2.name).toBe('Solar Atacama');
+    expect(base2.stage).toBe('tender');
     expect(mine2.name).toBe('My name');
     expect(res).toEqual({ name: 'mine' });
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -150,7 +151,7 @@ describe('ProjectEdit', () => {
 
   it('on a 504 with current data it shows verifying, then retries once and saves', async () => {
     vi.spyOn(api, 'getProject').mockResolvedValue(project);
-    const err = Object.assign(new api.ApiError(504, 'Upstream timeout'), { current: project });
+    const err = new api.ApiError(504, 'Upstream timeout', project);
     let release: (v: api.ApiError | never) => void = () => {};
     const save = vi
       .spyOn(api, 'saveProject')
@@ -208,5 +209,66 @@ describe('ProjectEdit', () => {
     await userEvent.click(screen.getByRole('link', { name: /Projects/ }));
     expect(confirm).toHaveBeenCalled();
     expect(screen.getByLabelText('Name')).toBeInTheDocument();
+  });
+
+  it('retries a 504 with the original base, not the server current', async () => {
+    vi.spyOn(api, 'getProject').mockResolvedValue(project);
+    const other = { ...project, country: 'Chile A' };
+    const save = vi
+      .spyOn(api, 'saveProject')
+      .mockRejectedValueOnce(new api.ApiError(504, 'Upstream timeout', other))
+      .mockResolvedValueOnce({ kind: 'saved', autoMerged: [], project: { ...other, name: 'Solar Atacama II' } });
+    renderPage();
+    await userEvent.type(await screen.findByLabelText('Name'), ' II');
+    await userEvent.click(screen.getByText('Save'));
+    await waitFor(() => expect(bar()).toBe('saved:0'));
+    expect(save.mock.calls[1][1].country).toBe('Chile');
+    expect(save.mock.calls[1][2].country).toBe('Chile');
+  });
+});
+
+// Real-shaped backend ({id, editable, readonly}) behind fetch, merging field by field like backend/app/merge.py.
+describe('ProjectEdit against the real API shape', () => {
+  const stored = { name: 'Solar Atacama', sector: 'energy', country: 'Chile', stage: 'tender', key_dates: [], linked_companies: [{ name: 'Atacama SpA', role: 'owner' }] } as Record<string, unknown>;
+  const display = () => ({ id: 'P-1001', editable: { ...stored }, readonly: { updated_at: 'x' } });
+
+  function fakeBackend() {
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+      if (!init || !init.method) return new Response(JSON.stringify(display()), { status: 200 });
+      const { base, mine, resolutions } = JSON.parse(String(init.body));
+      const conflicts: { key: string; field: string }[] = [];
+      const next = { ...stored };
+      for (const k of ['name', 'sector', 'country', 'stage']) {
+        if (mine[k] === base[k] || mine[k] === stored[k]) continue;
+        if (stored[k] === base[k] || resolutions?.[k] === 'mine') next[k] = mine[k];
+        else if (resolutions?.[k] !== 'theirs') conflicts.push({ key: k, field: k });
+      }
+      if (conflicts.length) return new Response(JSON.stringify({ current: { ...stored }, conflicts, auto_merged: [] }), { status: 409 });
+      Object.assign(stored, next);
+      return new Response(JSON.stringify({ project: display(), saved: true, auto_merged: [] }), { status: 200 });
+    }));
+  }
+
+  it('renders a real {id, editable, readonly} answer', async () => {
+    fakeBackend();
+    renderPage();
+    expect(await screen.findByDisplayValue('Solar Atacama')).toBeInTheDocument();
+    expect(screen.getByText('Atacama SpA')).toBeInTheDocument();
+  });
+
+  it('two writers: resolving a conflict keeps the other person\'s untouched-by-me field', async () => {
+    fakeBackend();
+    renderPage();
+    const name = await screen.findByLabelText('Name');
+    stored.country = 'Chile A'; // writer A saved while B was editing
+    stored.name = 'Their name';
+    await userEvent.clear(name);
+    await userEvent.type(name, 'My name');
+    await userEvent.click(screen.getByText('Save'));
+    await userEvent.click(await screen.findByText('Resolve mine'));
+    await waitFor(() => expect(bar()).toBe('saved:0'));
+    expect(stored.name).toBe('My name');
+    expect(stored.country).toBe('Chile A');
+    expect(screen.getByLabelText('Country')).toHaveValue('Chile A');
   });
 });
