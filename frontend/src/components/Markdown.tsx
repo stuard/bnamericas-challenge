@@ -106,7 +106,7 @@ function buildComponents(lineToId: Map<number, string>): Components {
           letterSpacing: tag === 'h1' ? '-.02em' : tag === 'h2' ? '-.01em' : 0,
           m: tag === 'h1' ? '0 0 16px' : tag === 'h2' ? '64px 0 16px' : '32px 0 8px', scrollMarginTop: 16,
           overflowWrap: 'anywhere',
-          '& a.anchor': { ml: 1, opacity: 0, color: 'text.secondary', textDecoration: 'none', fontWeight: 400 },
+          '& a.anchor': { display: { xs: 'none', md: 'inline' }, ml: 1, opacity: 0, color: 'text.secondary', textDecoration: 'none', fontWeight: 400 },
           '&:hover a.anchor, & a.anchor:focus': { opacity: 1 },
         }}>
           {children}
@@ -164,11 +164,11 @@ function buildComponents(lineToId: Map<number, string>): Components {
     },
     table: ({ children }) => (
       <Box sx={{ overflowX: 'auto', maxWidth: '100%', mb: 2, border: '1px solid', borderColor: 'divider', borderRadius: '12px', bgcolor: 'background.paper' }}>
-        <Box component="table" sx={{ borderCollapse: 'collapse', width: '100%', fontSize: 15 }}>{children}</Box>
+        <Box component="table" sx={{ borderCollapse: 'collapse', width: '100%', fontSize: { xs: 16, md: 15 } }}>{children}</Box>
       </Box>
     ),
     th: ({ children }) => <Box component="th" sx={{ textAlign: 'left', p: '12px 16px', fontSize: 13.5, fontWeight: 600, color: 'text.secondary', bgcolor: '#FAFBFC', borderBottom: '1px solid', borderColor: 'divider' }}>{children}</Box>,
-    td: ({ children }) => <Box component="td" sx={{ p: '12px 16px', verticalAlign: 'top', borderBottom: '1px solid', borderColor: 'divider' }}>{children}</Box>,
+    td: ({ children }) => <Box component="td" sx={{ p: '12px 16px', verticalAlign: 'top', fontSize: { xs: 16, md: 15 }, borderBottom: '1px solid', borderColor: 'divider' }}>{children}</Box>,
     hr: () => <Box component="hr" sx={{ border: 0, borderTop: '1px solid', borderColor: 'divider', my: 4 }} />,
   };
 }
