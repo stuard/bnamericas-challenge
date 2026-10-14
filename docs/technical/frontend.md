@@ -259,6 +259,28 @@ it('names the field, and the label for key dates', () => {
 });
 ```
 
+### `frontend/src/components/ConflictDialog.tsx::mergedLabel`
+
+**What it does:** Turns one entry of the "Merged without conflict" list into text a person reads. The entry is a field key, optionally followed by `:label` (a key date or linked company) and `|mine` or `|theirs` (who changed it). `name` becomes `Name`; `key_date:tender launch` becomes `Date "tender launch"`; `|mine` adds `(your change)` and `|theirs` adds `(their change)`.
+
+**Takes:** `entry: string`, for example `'name|mine'` or `'key_date:tender launch|theirs'`.
+
+**Returns:** A `string`, for example `'Name (your change)'` or `'Date "tender launch" (their change)'`.
+
+**Example:**
+
+```tsx
+// Verified: copied from ConflictDialog.test.tsx, run with vitest
+import { mergedLabel } from './ConflictDialog';
+
+it('labels merged entries with the field and who changed it', () => {
+  expect(mergedLabel('name')).toBe('Name');
+  expect(mergedLabel('name|mine')).toBe('Name (your change)');
+  expect(mergedLabel('country|theirs')).toBe('Country (their change)');
+  expect(mergedLabel('key_date:tender launch|theirs')).toBe('Date "tender launch" (their change)');
+});
+```
+
 ### `frontend/src/components/ConflictDialog.tsx::ConflictDialog`
 
 **What it does:** The dialog that opens when two people changed the same field. For every conflict it shows two radio choices, `Your value` and `Current value · saved by someone else`. `Save my selection` stays disabled until every row has a choice, then calls `onResolve` with one answer per conflict key. `Choose for all` buttons pick every row at once, and `Back to the form` closes it without saving. Fields that merged without conflict are listed at the bottom. On phones it fills the screen.

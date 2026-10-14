@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import App from '../App';
@@ -60,5 +60,23 @@ describe('AppShell', () => {
     expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Projects' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /open menu/i })).toBeNull();
+  });
+
+  it.each([320, 390])('scrolls the docs tabs inside their own bar at %i px, each tab at least 44 px high', (w) => {
+    setWidth(w);
+    at('/docs/guide');
+    const bar = screen.getByTestId('docs-tabs');
+    const style = getComputedStyle(bar);
+    expect(style.overflowX).toBe('auto');
+    expect(style.width).toBe('100%');
+    const nav = screen.getByRole('navigation', { name: 'Documentation' });
+    expect(getComputedStyle(nav).maxWidth).toBe('100vw');
+    for (const n of ['General', 'Technical', 'Step-by-step guide']) {
+      const tab = within(nav).getByRole('link', { name: n });
+      const t = getComputedStyle(tab);
+      expect(t.flex).toMatch(/^0 0 auto/);
+      expect(t.whiteSpace).toBe('nowrap');
+      expect(parseInt(t.minHeight, 10)).toBeGreaterThanOrEqual(44);
+    }
   });
 });
