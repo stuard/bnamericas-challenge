@@ -85,7 +85,8 @@ mkbody() { # base-json new-name -> {base, mine}
 
 say "== real save through the backend (the page's own proxy on :5173 must answer too)"
 curl -s --noproxy '*' -f "http://127.0.0.1:5173/api/projects" | J "assert len(d)>=25; print('   via :5173 /api/projects ->', len(d), 'projects')" | tee -a "$LOG"
-[ "${PIPESTATUS[0]}" = 0 ] && [ "${PIPESTATUS[1]}" = 0 ] || fail "the web page's proxy did not return the list"
+ps=("${PIPESTATUS[@]}")
+[ "${ps[0]}" = 0 ] && [ "${ps[1]}" = 0 ] || fail "the web page's proxy did not return the list"
 BASE="$(curl -s --noproxy '*' -f "$B/api/projects/P-1001" | J "print(json.dumps(d['editable']))")" || fail "GET P-1001"
 NEW="Guide check $RANDOM"
 code=""
