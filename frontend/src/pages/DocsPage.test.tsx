@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { Markdown, extractToc } from '../components/Markdown';
-import DocsPage from './DocsPage';
+import DocsPage, { splitFaq } from './DocsPage';
 
 const wrap = (ui: React.ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter>);
 
@@ -72,5 +72,34 @@ describe('DocsPage', () => {
     wrap(<DocsPage page="general" />);
     expect(screen.getByRole('heading', { level: 1, name: 'How the project editor works' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Checking whether it was saved/ })).toBeInTheDocument();
+  });
+
+  it('lists only h2 entries in the sticky, scrollable aside with 44px links', () => {
+    wrap(<DocsPage page="guide" sources={{ '../../../docs/guide.md': '# G\n\n## One\n### Sub\n## Two\n' }} />);
+    const aside = screen.getByRole('complementary', { name: 'On this page' });
+    const links = Array.from(aside.querySelectorAll('a')).map((a) => a.textContent);
+    expect(links).toEqual(['One', 'Two']);
+    expect(aside).toHaveStyle({ position: 'sticky', overflowY: 'auto' });
+    expect(getComputedStyle(aside.querySelector('a') as Element).minHeight).toBe('44px');
+  });
+
+  it('has a collapsed jump-to-section menu on guide and technical, not on general', () => {
+    const src = { '../../../docs/guide.md': '# G\n\n## One\n## Two\n', '../../../docs/general.md': '# G\n\n## One\n' };
+    wrap(<DocsPage page="guide" sources={src} />);
+    const menu = screen.getByText('Jump to section').closest('details') as HTMLDetailsElement;
+    expect(menu.open).toBe(false);
+    expect(menu.querySelectorAll('a')).toHaveLength(2);
+    document.body.innerHTML = '';
+    wrap(<DocsPage page="general" sources={src} />);
+    expect(screen.queryByText('Jump to section')).toBeNull();
+  });
+
+  it('renders the FAQ as an accordion without changing the source', () => {
+    const md = '# T\n\n## Intro\n\ntext\n\n## Frequently asked questions\n\n### Q1?\n\nA1.\n\n### Q2?\n\nA2.\n\n## After\n';
+    wrap(<DocsPage page="general" sources={{ '../../../docs/general.md': md }} />);
+    const sums = Array.from(document.querySelectorAll('details > summary')).map((e) => e.textContent);
+    expect(sums).toEqual(['Q1?', 'Q2?']);
+    expect(screen.getByRole('heading', { level: 2, name: /After/ })).toBeInTheDocument();
+    expect(splitFaq('## No faq here')).toBeNull();
   });
 });

@@ -153,26 +153,7 @@ The shared look (colours, spacing, font).
 
 > **Note** MUI basics used in this repo. MUI is the component library (`Button`, `TextField`, `Dialog`...). Two ideas appear everywhere. The `sx` prop is a style object on any MUI component: `sx={{ px: 2, color: 'primary.main' }}` means padding left and right of 2 x 8 px = 16 px and the theme's primary colour. Responsive values use breakpoints: `{ xs: '1fr', md: '1fr 1fr' }` is one column on phones and two from 900 px. Theme tokens such as `primary.main`, `text.secondary`, `divider`, `background.paper` come from this file, so prefer tokens over hard-coded hex colours.
 
-### `frontend/src/theme.ts::theme`
-
-**What it does:** The shared look of the app, created once with MUI's `createTheme`. It sets the 8 px spacing unit, the blue primary colour, the light grey page background, the Inter font and a dark-blue top bar. `main.tsx` hands it to `ThemeProvider`, and every MUI component below reads from it. Change a colour here and the whole app follows.
-
-**Takes:** Nothing; it is a value, not a function. Pass it to `<ThemeProvider theme={theme}>`.
-
-**Returns:** An MUI `Theme` object. Example values: `theme.palette.primary.main` is `'#1565C0'`; `theme.spacing(2)` is `'16px'`.
-
-**Example:**
-
-```tsx
-// Verified: run with vitest (scratch test next to theme.ts)
-import theme from './theme';
-
-it('exposes the brand tokens', () => {
-  expect(theme.palette.primary.main).toBe('#1565C0');
-  expect(theme.palette.background.default).toBe('#F7F8FA');
-  expect(theme.spacing(2)).toBe('16px');
-});
-```
+> The theme is the file's default export (`export default theme`), a value rather than a named symbol, so it has no entry of its own. Pass it to `<ThemeProvider theme={theme}>`; `theme.palette.primary.main` is `'#1565C0'` and `theme.spacing(2)` is `'16px'`.
 
 ## Frontend · src/components/AppShell.tsx
 
@@ -346,51 +327,159 @@ it('reports edits through onChange and marks changed labels', async () => {
 
 ## Frontend · src/components/Markdown.tsx
 
-Markdown renderer for the documentation pages (placeholder at the time of writing).
+Markdown renderer for the documentation pages.
 
 ### `frontend/src/components/Markdown.tsx::Markdown`
 
-**What it does:** Reserved for rendering the documentation Markdown files inside the app. At the time of writing it is a placeholder that renders the word `Markdown`; the documentation-app work replaces it with the real renderer. Check the file before relying on this entry.
+**What it does:** Renders a Markdown text (GitHub flavour) with the app's styling: headings with `#` anchors, copyable code blocks, coloured callouts, tables that scroll sideways inside their own box, and links with a 44 px tap area.
 
-**Takes:** No props today.
+**Takes:** `{ source: string }`, for example `<Markdown source={'## Hi'} />`.
 
-**Returns:** A `<div>` with the text `Markdown` (placeholder).
+**Returns:** The rendered React elements; each heading carries the id `extractToc` gives it.
 
 **Example:**
 
 ```tsx
-// Verified: run with vitest (scratch test next to Markdown.tsx); placeholder behaviour
+// Verified: run with vitest (scratch test next to Markdown.tsx)
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { Markdown } from './Markdown';
 
-it('renders the placeholder', () => {
-  render(<Markdown />);
-  expect(screen.getByText('Markdown')).toBeInTheDocument();
+it('renders a heading with its id', () => {
+  render(<MemoryRouter><Markdown source={'## Hello world'} /></MemoryRouter>);
+  expect(screen.getByRole('heading', { level: 2 }).id).toBe('hello-world');
+});
+```
+
+### `frontend/src/components/Markdown.tsx::slugify`
+
+**What it does:** Turns a heading text into the id used in its `#anchor`: lowercase, accents removed, anything that is not a letter or digit becomes one dash, dashes at the ends are trimmed. An empty result becomes `section`.
+
+**Takes:** `text: string`, for example `'Case 1: same field'`.
+
+**Returns:** A string such as `'case-1-same-field'`.
+
+**Example:**
+
+```tsx
+// Verified: run with vitest (scratch test next to Markdown.tsx)
+import { slugify } from './Markdown';
+
+it('makes anchor ids', () => {
+  expect(slugify('Case 1: same field')).toBe('case-1-same-field');
+  expect(slugify('Año nuevo')).toBe('ano-nuevo');
+  expect(slugify('???')).toBe('section');
+});
+```
+
+### `frontend/src/components/Markdown.tsx::extractToc`
+
+**What it does:** Lists the `##` and `###` headings of a Markdown text for the 'On this page' list and the jump menu. Lines inside code fences are skipped, and repeated headings get `-2`, `-3`... so every id is unique.
+
+**Takes:** `markdown: string`, the whole source.
+
+**Returns:** An array of `{ level: 2 | 3, text, id, line }`, `line` counted from 1. Empty when there are no such headings.
+
+**Example:**
+
+```tsx
+// Verified: run with vitest (scratch test next to Markdown.tsx)
+import { extractToc } from './Markdown';
+
+it('lists headings with unique ids', () => {
+  const toc = extractToc('# T\n## One\n### Sub\n## One\n');
+  expect(toc.map((t) => t.id)).toEqual(['one', 'sub', 'one-2']);
+  expect(toc[1]).toMatchObject({ level: 3, text: 'Sub', line: 3 });
+});
+```
+
+### `frontend/src/components/Markdown.tsx::calloutKind`
+
+**What it does:** Decides whether a quote is a coloured callout. It looks at the first bold word of the quote (`> **Note** ...`) and accepts `note`, `tip`, `warning` and `danger`, in any letter case.
+
+**Takes:** `firstBold: string | null`, the text of the first bold word, or `null` when the quote does not start with one.
+
+**Returns:** The kind as a lowercase string, or `null` for an ordinary quote.
+
+**Example:**
+
+```tsx
+// Verified: run with vitest (scratch test next to Markdown.tsx)
+import { calloutKind } from './Markdown';
+
+it('recognises callout words', () => {
+  expect(calloutKind('Warning')).toBe('warning');
+  expect(calloutKind(' TIP ')).toBe('tip');
+  expect(calloutKind('Hello')).toBeNull();
+  expect(calloutKind(null)).toBeNull();
 });
 ```
 
 ## Frontend · src/pages/DocsPage.tsx
 
-The screen behind the three documentation URLs (placeholder at the time of writing).
+The screen behind the three documentation URLs .
 
 ### `frontend/src/pages/DocsPage.tsx::DocsPage`
 
-**What it does:** The screen behind `/docs/general`, `/docs/technical` and `/docs/guide`. `App.tsx` passes which of the three to show. At the time of writing it is a placeholder that prints `DocsPage <page>`; the documentation-app work replaces it with the real page that renders the files in `docs/`. Check the file before relying on this entry.
+**What it does:** The screen behind `/docs/general`, `/docs/technical` and `/docs/guide`: the rendered text, a 'Jump to section' menu on phones (guide and technical), a sticky 'On this page' list of `##` entries on wide screens, the FAQ as an accordion, and previous/next cards.
 
-**Takes:** `{ page }` where `page: 'general' | 'technical' | 'guide'`, for example `<DocsPage page="guide" />`.
+**Takes:** `{ page, sources? }` where `page: 'general' | 'technical' | 'guide'`; `sources` replaces the real `docs/` files (used by tests).
 
-**Returns:** A `<div>` with the text `DocsPage guide` (placeholder).
+**Returns:** The page. When no file exists it shows 'This page is not written yet'.
 
 **Example:**
 
 ```tsx
-// Verified: run with vitest (scratch test next to DocsPage.tsx); placeholder behaviour
+// Verified: run with vitest (scratch test next to DocsPage.tsx)
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import DocsPage from './DocsPage';
 
-it('renders the placeholder with the page name', () => {
-  render(<DocsPage page="guide" />);
-  expect(screen.getByText('DocsPage guide')).toBeInTheDocument();
+it('shows the empty message', () => {
+  render(<MemoryRouter><DocsPage page="guide" sources={{}} /></MemoryRouter>);
+  expect(screen.getByText('This page is not written yet')).toBeInTheDocument();
+});
+```
+
+### `frontend/src/pages/DocsPage.tsx::pageSource`
+
+**What it does:** Joins the Markdown files of one documentation page, in order (`technical` is index, backend, frontend). Files that are missing or empty are skipped.
+
+**Takes:** `page: 'general' | 'technical' | 'guide'` and `sources`, an object from file path to text (the real files come from `import.meta.glob`).
+
+**Returns:** The joined text, or an empty string when no file exists.
+
+**Example:**
+
+```tsx
+// Verified: run with vitest (scratch test next to DocsPage.tsx)
+import { pageSource } from './DocsPage';
+
+it('joins technical files in order and skips missing ones', () => {
+  const sources = { '../../../docs/technical/backend.md': 'B', '../../../docs/technical/index.md': 'I' };
+  expect(pageSource('technical', sources)).toBe('I\n\nB');
+  expect(pageSource('guide', {})).toBe('');
+});
+```
+
+### `frontend/src/pages/DocsPage.tsx::splitFaq`
+
+**What it does:** Finds the `## Frequently asked questions` section of a Markdown text and cuts it into its questions (each `###` heading with the answer below it), so the page can show them as an accordion. The Markdown file itself is not changed.
+
+**Takes:** `source: string`, the whole page text.
+
+**Returns:** `{ before, heading, items: { q, a }[], after }`, or `null` when there is no FAQ section with questions.
+
+**Example:**
+
+```tsx
+// Verified: run with vitest (scratch test next to DocsPage.tsx)
+import { splitFaq } from './DocsPage';
+
+it('splits the FAQ', () => {
+  const r = splitFaq('## Frequently asked questions\n\n### Q1?\n\nA1.\n');
+  expect(r?.items).toEqual([{ q: 'Q1?', a: 'A1.' }]);
+  expect(splitFaq('## Other')).toBeNull();
 });
 ```
 

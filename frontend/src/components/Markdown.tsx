@@ -94,6 +94,7 @@ function firstBold(node?: HNode): string | null {
 }
 
 const mono = 'ui-monospace, Menlo, monospace';
+const linkSx = { color: 'primary.main', textUnderlineOffset: '3px', display: 'inline-block', py: '12px', my: '-12px', overflowWrap: 'anywhere' } as const;
 
 function buildComponents(lineToId: Map<number, string>): Components {
   const heading = (tag: 'h1' | 'h2' | 'h3' | 'h4') =>
@@ -106,7 +107,7 @@ function buildComponents(lineToId: Map<number, string>): Components {
           letterSpacing: tag === 'h1' ? '-.02em' : tag === 'h2' ? '-.01em' : 0,
           m: tag === 'h1' ? '0 0 16px' : tag === 'h2' ? '64px 0 16px' : '32px 0 8px', scrollMarginTop: 16,
           overflowWrap: 'anywhere',
-          '& a.anchor': { display: { xs: 'none', md: 'inline' }, ml: 1, opacity: 0, color: 'text.secondary', textDecoration: 'none', fontWeight: 400 },
+          '& a.anchor': { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 44, minHeight: 44, verticalAlign: 'middle', ml: 0.5, opacity: 0, color: 'text.secondary', textDecoration: 'none', fontWeight: 400 },
           '&:hover a.anchor, & a.anchor:focus': { opacity: 1 },
         }}>
           {children}
@@ -124,8 +125,8 @@ function buildComponents(lineToId: Map<number, string>): Components {
         return <Button variant="contained" component={internal ? RouterLink : 'a'} {...(internal ? { to: href } : { href })} sx={{ minHeight: 44, textTransform: 'none', fontWeight: 600 }}>{children}</Button>;
       }
       return internal
-        ? <Box component={RouterLink} to={href} sx={{ color: 'primary.main', textUnderlineOffset: '3px' }}>{children}</Box>
-        : <Box component="a" href={href} sx={{ color: 'primary.main', textUnderlineOffset: '3px' }}>{children}</Box>;
+        ? <Box component={RouterLink} to={href} sx={linkSx}>{children}</Box>
+        : <Box component="a" href={href} sx={linkSx}>{children}</Box>;
     },
     ul: ({ children }) => <Box component="ul" sx={{ m: '0 0 16px', pl: 3, '& li': { mb: 1 } }}>{children}</Box>,
     ol: ({ children }) => (
@@ -137,7 +138,7 @@ function buildComponents(lineToId: Map<number, string>): Components {
       }}>{children}</Box>
     ),
     code: ({ children, className }) => (
-      <Box component="code" className={className} sx={{ fontFamily: mono, fontSize: 14, bgcolor: '#EEF1F5', px: 0.75, py: 0.25, borderRadius: '6px' }}>{children}</Box>
+      <Box component="code" className={className} sx={{ fontFamily: mono, fontSize: 14, bgcolor: '#EEF1F5', px: 0.75, py: 0.25, borderRadius: '6px', overflowWrap: 'anywhere' }}>{children}</Box>
     ),
     pre: ({ children }) => {
       const el = Children.toArray(children)[0];
@@ -168,7 +169,7 @@ function buildComponents(lineToId: Map<number, string>): Components {
       </Box>
     ),
     th: ({ children }) => <Box component="th" sx={{ textAlign: 'left', p: '12px 16px', fontSize: 13.5, fontWeight: 600, color: 'text.secondary', bgcolor: '#FAFBFC', borderBottom: '1px solid', borderColor: 'divider' }}>{children}</Box>,
-    td: ({ children }) => <Box component="td" sx={{ p: '12px 16px', verticalAlign: 'top', fontSize: { xs: 16, md: 15 }, borderBottom: '1px solid', borderColor: 'divider' }}>{children}</Box>,
+    td: ({ children }) => <Box component="td" sx={{ p: '12px 16px', verticalAlign: 'top', minWidth: 120, fontSize: { xs: 16, md: 15 }, borderBottom: '1px solid', borderColor: 'divider' }}>{children}</Box>,
     hr: () => <Box component="hr" sx={{ border: 0, borderTop: '1px solid', borderColor: 'divider', my: 4 }} />,
   };
 }
