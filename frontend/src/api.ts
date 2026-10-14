@@ -67,8 +67,9 @@ export async function saveProject(
   base: Editable,
   mine: Editable,
   resolutions?: SaveRequest['resolutions'],
+  seen?: SaveRequest['seen'],
 ): Promise<SaveResult> {
-  const body: SaveRequest = { base, mine, ...(resolutions ? { resolutions } : {}) };
+  const body: SaveRequest = { base, mine, ...(resolutions ? { resolutions } : {}), ...(resolutions && seen ? { seen } : {}) };
   const res = await request(`/api/projects/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },

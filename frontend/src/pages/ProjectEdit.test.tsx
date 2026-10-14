@@ -17,10 +17,11 @@ vi.mock('../components/SaveBar', () => ({
   ),
 }));
 vi.mock('../components/ConflictDialog', () => ({
-  ConflictDialog: (p: { open: boolean; conflicts: { key: string }[]; autoMerged: string[]; onResolve: (r: Record<string, 'mine' | 'theirs'>) => void; onBack: () => void }) =>
+  ConflictDialog: (p: { open: boolean; conflicts: { key: string; theirs?: string | null }[]; autoMerged: string[]; onResolve: (r: Record<string, 'mine' | 'theirs'>) => void; onBack: () => void }) =>
     p.open ? (
       <div role="dialog">
         <span>{`conflicts:${p.conflicts.map((c) => c.key).join(',')} merged:${p.autoMerged.join(',')}`}</span>
+        <span>{`theirs:${p.conflicts.map((c) => c.theirs ?? '').join(',')}`}</span>
         <button onClick={() => p.onResolve({ name: 'mine' })}>Resolve mine</button>
         <button onClick={p.onBack}>Back</button>
       </div>
@@ -270,5 +271,35 @@ describe('ProjectEdit against the real API shape', () => {
     expect(stored.name).toBe('My name');
     expect(stored.country).toBe('Chile A');
     expect(screen.getByLabelText('Country')).toHaveValue('Chile A');
+  });
+
+  it('sends seen = the theirs of the last 409 with the ORIGINAL base; a changed value asks again', async () => {
+    stored.name = 'Solar Atacama';
+    const puts: any[] = [];
+    const answers = ['v2', 'v3'];
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+      if (!init || !init.method) return new Response(JSON.stringify(display()), { status: 200 });
+      puts.push(JSON.parse(String(init.body)));
+      const theirs = answers.shift();
+      if (!theirs) return new Response(JSON.stringify({ project: display(), saved: true, auto_merged: [] }), { status: 200 });
+      const conflicts = [{ key: 'name', field: 'name', base: 'Solar Atacama', mine: 'My name', theirs }];
+      return new Response(JSON.stringify({ current: { ...stored, name: theirs }, conflicts, auto_merged: [] }), { status: 409 });
+    }));
+    renderPage();
+    const name = await screen.findByLabelText('Name');
+    await userEvent.clear(name);
+    await userEvent.type(name, 'My name');
+    await userEvent.click(screen.getByText('Save'));
+    expect(await screen.findByText('theirs:v2')).toBeInTheDocument();
+    expect(puts[0].seen).toBeUndefined();
+    await userEvent.click(screen.getByText('Resolve mine'));
+    expect(await screen.findByText('theirs:v3')).toBeInTheDocument();
+    expect(puts[1].seen).toEqual({ name: 'v2' });
+    expect(puts[1].resolutions).toEqual({ name: 'mine' });
+    expect(puts[1].base.name).toBe('Solar Atacama');
+    await userEvent.click(screen.getByText('Resolve mine'));
+    await waitFor(() => expect(bar()).toBe('saved:0'));
+    expect(puts[2].seen).toEqual({ name: 'v3' });
+    expect(puts[2].base.name).toBe('Solar Atacama');
   });
 });
