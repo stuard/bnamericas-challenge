@@ -10,7 +10,7 @@ import { useTheme } from '@mui/material/styles';
 import { listProjects } from '../api';
 import type { ProjectSummary } from '../types';
 
-const PAGE_SIZE = 25;
+const PAGE_SIZES = [10, 25, 50];
 const STAGE_SX = { fontWeight: 500, fontSize: 14, bgcolor: 'primary.light', color: 'primary.dark' } as const;
 const STAGE_COLORS: Record<string, object> = {
   operation: { bgcolor: 'success.light', color: 'success.dark' },
@@ -80,6 +80,7 @@ export default function ProjectList() {
   const [stage, setStage] = useState('');
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'name', dir: 'asc' });
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
 
   // Loads the list from the API (also used by the Retry button).
   const load = useCallback(() => {
@@ -96,7 +97,7 @@ export default function ProjectList() {
     const k = sort.key;
     return [...f].sort((a, b) => a[k].localeCompare(b[k]) * (sort.dir === 'asc' ? 1 : -1));
   }, [rows, search, sector, stage, sort]);
-  const shown = visible.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const shown = visible.slice(page * pageSize, (page + 1) * pageSize);
 
   const filtered = Boolean(search || sector || stage);
   // Resets all three filters and goes back to the first page.
@@ -193,7 +194,8 @@ export default function ProjectList() {
 
         {rows && visible.length > 0 && (
           <TablePagination
-            component="div" count={visible.length} page={page} rowsPerPage={PAGE_SIZE} rowsPerPageOptions={[PAGE_SIZE]}
+            component="div" count={visible.length} page={page} rowsPerPage={pageSize} rowsPerPageOptions={PAGE_SIZES}
+            onRowsPerPageChange={(e) => { setPageSize(Number(e.target.value)); setPage(0); }}
             onPageChange={(_, p) => { setPage(p); window.scrollTo({ top: 0 }); }}
             sx={{ '& .MuiTablePagination-selectLabel, & .MuiTablePagination-input': { display: { xs: 'none', sm: 'block' } }, '& .MuiIconButton-root': { width: 44, height: 44 }, '& .MuiTablePagination-displayedRows': { fontSize: 16 } }}
           />

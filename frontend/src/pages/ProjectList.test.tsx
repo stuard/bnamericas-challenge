@@ -106,15 +106,26 @@ describe('ProjectList', () => {
     expect(screen.getByTestId('where')).toHaveTextContent('/projects/2');
   });
 
-  it('paginates 25 per page with the footer text for 30 rows', async () => {
+  it('paginates 10 per page by default with the footer text for 30 rows', async () => {
     listProjects.mockResolvedValue(MANY);
     show();
     await screen.findByText('Project 01');
+    expect(bodyRows()).toHaveLength(10);
+    expect(screen.getByText('1–10 of 30')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /next page/i }));
+    expect(screen.getByText('11–20 of 30')).toBeInTheDocument();
+    expect(bodyRows()).toHaveLength(10);
+  });
+
+  it('the rows-per-page menu offers 10, 25 and 50 and 25 shows 25 rows', async () => {
+    listProjects.mockResolvedValue(MANY);
+    show();
+    await screen.findByText('Project 01');
+    await userEvent.click(screen.getByRole('combobox', { name: /rows per page/i }));
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['10', '25', '50']);
+    await userEvent.click(screen.getByRole('option', { name: '25' }));
     expect(bodyRows()).toHaveLength(25);
     expect(screen.getByText('1–25 of 30')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: /next page/i }));
-    expect(screen.getByText('26–30 of 30')).toBeInTheDocument();
-    expect(bodyRows()).toHaveLength(5);
   });
 
   it('on a phone the rows become a list with sector · country', async () => {
