@@ -31,7 +31,7 @@ function show() {
 }
 const bodyRows = () => screen.getAllByRole('row').slice(1);
 
-beforeEach(() => { listProjects.mockReset(); });
+beforeEach(() => { listProjects.mockReset(); window.scrollTo = vi.fn() as unknown as typeof window.scrollTo; });
 
 describe('ProjectList', () => {
   it('shows a skeleton, then rows from the mocked api', async () => {
@@ -130,5 +130,56 @@ describe('ProjectList', () => {
       // @ts-expect-error remove the stub so other tests use the desktop table
       delete window.matchMedia;
     }
+  });
+
+  it('F1 each row name is a real link, reachable with Tab, Enter opens it', async () => {
+    listProjects.mockResolvedValue(FEW);
+    show();
+    const link = await screen.findByRole('link', { name: 'Metro Bogota' });
+    expect(link).toHaveAttribute('href', '/projects/2');
+    expect(screen.getAllByRole('link')).toHaveLength(3);
+    link.focus();
+    expect(link).toHaveFocus();
+    await userEvent.keyboard('{Enter}');
+    expect(screen.getByTestId('where')).toHaveTextContent('/projects/2');
+  });
+
+  it('F2 stage chips: Operation green, Cancelled grey, others blue', async () => {
+    listProjects.mockResolvedValue([P('1', 'A', 'Energy', 'Peru', 'operation'), P('2', 'B', 'Energy', 'Peru', 'cancelled'), P('3', 'C', 'Energy', 'Peru', 'idea')]);
+    show();
+    await screen.findByText('A');
+    const bg = (text: string) => getComputedStyle(screen.getByText(text).closest('.MuiChip-root') as Element).backgroundColor;
+    const [op, ca, id] = [bg('Operation'), bg('Cancelled'), bg('Idea')];
+    expect(new Set([op, ca, id]).size).toBe(3);
+    const rgb = (c: string) => { const d = document.createElement('div'); d.style.backgroundColor = c; return d.style.backgroundColor; };
+    expect(op).toBe(rgb(theme.palette.success.light));
+    expect(ca).toBe(rgb(theme.palette.grey[200]));
+    expect(id).toBe(rgb(theme.palette.primary.light));
+  });
+
+  it('F3/F5 sort labels and select boxes are 44px tall (style rules)', async () => {
+    listProjects.mockResolvedValue(FEW);
+    show();
+    await screen.findByText('Solar Atacama');
+    expect(getComputedStyle(screen.getByRole('button', { name: 'Country' })).minHeight).toBe('44px');
+    expect(getComputedStyle(screen.getByRole('combobox', { name: 'Sector' })).minHeight).toBe('44px');
+    expect(getComputedStyle(screen.getByRole('combobox', { name: 'Stage' })).minHeight).toBe('44px');
+  });
+
+  it('F4 table cells and the count are 16px', async () => {
+    listProjects.mockResolvedValue(FEW);
+    show();
+    await screen.findByText('Solar Atacama');
+    expect(getComputedStyle(screen.getAllByText('Chile', { selector: 'td' })[0]).fontSize).toBe('16px');
+    expect(getComputedStyle(screen.getByText('3 projects')).fontSize).toBe('16px');
+  });
+
+  it('F5 changing page scrolls to the top', async () => {
+    const spy = window.scrollTo as unknown as ReturnType<typeof vi.fn>;
+    listProjects.mockResolvedValue(MANY);
+    show();
+    await screen.findByText('Project 01');
+    await userEvent.click(screen.getByRole('button', { name: /next page/i }));
+    expect(spy).toHaveBeenCalledWith({ top: 0 });
   });
 });
