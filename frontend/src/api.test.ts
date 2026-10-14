@@ -20,11 +20,24 @@ describe('api', () => {
     expect(f.mock.calls[0][0]).toBe('/api/projects');
   });
 
+  it('flattens the real detail shape {id, editable, readonly}', async () => {
+    stub(json(200, { id: 'P-1001', editable: ed, readonly: { updated_at: 'u' } }));
+    expect(await getProject('P-1001')).toEqual({ ...ed, id: 'P-1001', updated_at: 'u' });
+  });
+
+  it('carries current on a 504', async () => {
+    stub(json(504, { detail: 'timeout', current: ed }));
+    await expect(saveProject('1', ed, ed)).rejects.toMatchObject({ status: 504, current: ed });
+  });
+
   it('saves and reports saved', async () => {
-    const f = stub(json(200, { project: { id: '1', ...ed }, auto_merged: ['name'] }));
+    const f = stub(json(200, { project: { id: 'P-1001', editable: ed, readonly: {} }, saved: true, auto_merged: ['name'] }));
     const r = await saveProject('1', ed, ed);
     expect(r.kind).toBe('saved');
-    if (r.kind === 'saved') expect(r.autoMerged).toEqual(['name']);
+    if (r.kind === 'saved') {
+      expect(r.autoMerged).toEqual(['name']);
+      expect(r.project).toMatchObject({ ...ed, id: 'P-1001' });
+    }
     expect(f.mock.calls[0][1].method).toBe('PUT');
   });
 

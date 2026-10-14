@@ -54,7 +54,7 @@ export function KeyDatesEditor({ value, onChange, changedLabels = [], showErrors
               error={showErrors && !row.label.trim()}
               helperText={showErrors && !row.label.trim() ? 'Required' : undefined}
               data-changed={changed}
-              sx={{ ...sx, gridColumn: 1 }}
+              sx={{ ...sx, gridColumn: 1, gridRow: 1 }}
               fullWidth
             />
             <TextField
@@ -67,13 +67,13 @@ export function KeyDatesEditor({ value, onChange, changedLabels = [], showErrors
               InputLabelProps={{ shrink: true }}
               inputProps={{ 'aria-label': `Date for ${row.label || 'new date'}` }}
               data-changed={changed}
-              sx={{ ...sx, gridColumn: 1, gridRow: { xs: 2, sm: 'auto' }, '@media (min-width:600px)': { gridColumn: 2 } }}
+              sx={{ ...sx, gridColumn: { xs: 1, sm: 2 }, gridRow: { xs: 2, sm: 1 } }}
               fullWidth
             />
             <IconButton
               aria-label={`Remove ${row.label || 'date'}`}
               onClick={() => onChange(value.filter((_, j) => j !== i))}
-              sx={{ width: 44, height: 44, gridColumn: { xs: 2, sm: 3 }, gridRow: { xs: '1 / 3', sm: 'auto' } }}
+              sx={{ width: 44, height: 44, gridColumn: { xs: 2, sm: 3 }, gridRow: { xs: '1 / 3', sm: 1 } }}
             >
               <DeleteOutlineIcon />
             </IconButton>
