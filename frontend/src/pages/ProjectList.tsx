@@ -1,7 +1,8 @@
+import type React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
-  Alert, Box, Button, Chip, FormControl, InputLabel, MenuItem, Paper, Select, Skeleton, Stack,
+  Alert, Box, Button, Chip, FormControl, InputLabel, Link, MenuItem, Paper, Select, Skeleton, Stack,
   Table, TableBody, TableCell, TableHead, TablePagination, TableRow, TableSortLabel, TextField,
   Typography, useMediaQuery,
 } from '@mui/material';
@@ -10,7 +11,14 @@ import { listProjects } from '../api';
 import type { ProjectSummary } from '../types';
 
 const PAGE_SIZE = 25;
-const STAGE_SX = { fontWeight: 500, bgcolor: 'primary.light', color: 'primary.dark' } as const;
+const STAGE_SX = { fontWeight: 500, fontSize: 14, bgcolor: 'primary.light', color: 'primary.dark' } as const;
+const STAGE_COLORS: Record<string, object> = {
+  operation: { bgcolor: 'success.light', color: 'success.dark' },
+  cancelled: { bgcolor: 'grey.200', color: 'text.secondary' },
+};
+const SELECT_BOX = { style: { minHeight: 44, boxSizing: 'border-box', display: 'flex', alignItems: 'center' } } as const;
+const CELL16 = { fontSize: 16 } as const;
+const LINK_SX = { color: 'inherit', textDecoration: 'none', '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 2, borderRadius: 0.5 } } as const;
 
 // MUI keeps a hidden input inside each Select; giving it a 44px box keeps touch-target checks quiet.
 const NATIVE_SX = { '& .MuiSelect-nativeInput': { height: 44, minWidth: 44 } } as const;
@@ -44,8 +52,12 @@ export function filterProjects(rows: ProjectSummary[], search: string, sector: s
 function SectorChip({ value }: { value: string }) {
   return <Chip label={label(value)} variant="outlined" size="small" />;
 }
+// Real link so keyboard users can reach the row; the row click stays as a bonus.
+function ProjectLink({ id, name }: { id: string; name: string }) {
+  return <Link component={RouterLink} to={`/projects/${id}`} onClick={(e: React.MouseEvent) => e.stopPropagation()} sx={LINK_SX}>{name}</Link>;
+}
 function StageChip({ value }: { value: string }) {
-  return <Chip label={label(value)} size="small" sx={STAGE_SX} />;
+  return <Chip label={label(value)} size="small" sx={{ ...STAGE_SX, ...STAGE_COLORS[value.toLowerCase()] }} />;
 }
 
 // Gray placeholder rows shown while the list loads.
@@ -100,7 +112,7 @@ export default function ProjectList() {
     <Box sx={{ maxWidth: 1280, mx: 'auto', px: { xs: 2, sm: 4 }, py: { xs: 3, sm: 4 } }}>
       <Stack direction="row" alignItems="baseline" spacing={2} sx={{ mb: 3 }}>
         <Typography variant="h4" component="h1" sx={{ fontWeight: 700, fontSize: { xs: 24, sm: 28 } }}>Projects</Typography>
-        {rows && <Typography color="text.secondary">{rows.length} projects</Typography>}
+        {rows && <Typography color="text.secondary" sx={{ fontSize: 16 }}>{rows.length} projects</Typography>}
       </Stack>
       <Paper variant="outlined">
         <Stack direction="row" spacing={2} useFlexGap sx={{ p: { xs: 1.5, sm: 2 }, flexWrap: 'wrap', borderBottom: 1, borderColor: 'divider' }}>
@@ -112,14 +124,14 @@ export default function ProjectList() {
           />
           <FormControl size="small" sx={{ flex: { xs: '1 1 0', sm: '0 0 180px' }, minWidth: 0, '& .MuiInputBase-root': { minHeight: 44 } }}>
             <InputLabel shrink id="sector-l">Sector</InputLabel>
-            <Select notched sx={NATIVE_SX} labelId="sector-l" label="Sector" value={sector} displayEmpty onChange={(e) => changed(() => setSector(e.target.value))}>
+            <Select notched sx={NATIVE_SX} SelectDisplayProps={SELECT_BOX} labelId="sector-l" label="Sector" value={sector} displayEmpty onChange={(e) => changed(() => setSector(e.target.value))}>
               <MenuItem value="">All</MenuItem>
               {sectors.map((s) => <MenuItem key={s} value={s}>{label(s)}</MenuItem>)}
             </Select>
           </FormControl>
           <FormControl size="small" sx={{ flex: { xs: '1 1 0', sm: '0 0 180px' }, minWidth: 0, '& .MuiInputBase-root': { minHeight: 44 } }}>
             <InputLabel shrink id="stage-l">Stage</InputLabel>
-            <Select notched sx={NATIVE_SX} labelId="stage-l" label="Stage" value={stage} displayEmpty onChange={(e) => changed(() => setStage(e.target.value))}>
+            <Select notched sx={NATIVE_SX} SelectDisplayProps={SELECT_BOX} labelId="stage-l" label="Stage" value={stage} displayEmpty onChange={(e) => changed(() => setStage(e.target.value))}>
               <MenuItem value="">All</MenuItem>
               {stages.map((s) => <MenuItem key={s} value={s}>{label(s)}</MenuItem>)}
             </Select>
@@ -143,7 +155,7 @@ export default function ProjectList() {
               <Box component="li" key={p.id} onClick={() => open(p.id)}
                 sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.75, cursor: 'pointer', borderBottom: 1, borderColor: 'divider' }}>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography sx={{ fontWeight: 600 }}>{p.name}</Typography>
+                  <Typography sx={{ fontWeight: 600 }}><ProjectLink id={p.id} name={p.name} /></Typography>
                   <Typography color="text.secondary">{label(p.sector)} · {p.country}</Typography>
                   <Box sx={{ mt: 0.75 }}><StageChip value={p.stage} /></Box>
                 </Box>
@@ -157,7 +169,7 @@ export default function ProjectList() {
               <TableRow>
                 {COLUMNS.map((c) => (
                   <TableCell key={c.key} sortDirection={sort.key === c.key ? sort.dir : false} sx={{ fontWeight: 600, color: 'text.secondary' }}>
-                    <TableSortLabel active={sort.key === c.key} direction={sort.key === c.key ? sort.dir : 'asc'} onClick={() => sortBy(c.key)}>
+                    <TableSortLabel active={sort.key === c.key} direction={sort.key === c.key ? sort.dir : 'asc'} onClick={() => sortBy(c.key)} sx={{ minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>
                       {c.label}
                     </TableSortLabel>
                   </TableCell>
@@ -168,11 +180,11 @@ export default function ProjectList() {
             <TableBody>
               {shown.map((p) => (
                 <TableRow key={p.id} hover onClick={() => open(p.id)} sx={{ cursor: 'pointer' }}>
-                  <TableCell sx={{ fontWeight: 600 }}>{p.name}</TableCell>
-                  <TableCell><SectorChip value={p.sector} /></TableCell>
-                  <TableCell>{p.country}</TableCell>
-                  <TableCell><StageChip value={p.stage} /></TableCell>
-                  <TableCell align="right" sx={{ color: 'text.secondary' }} aria-hidden>›</TableCell>
+                  <TableCell sx={{ ...CELL16, fontWeight: 600 }}><ProjectLink id={p.id} name={p.name} /></TableCell>
+                  <TableCell sx={CELL16}><SectorChip value={p.sector} /></TableCell>
+                  <TableCell sx={CELL16}>{p.country}</TableCell>
+                  <TableCell sx={CELL16}><StageChip value={p.stage} /></TableCell>
+                  <TableCell align="right" sx={{ ...CELL16, color: 'text.secondary' }} aria-hidden>›</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -182,7 +194,7 @@ export default function ProjectList() {
         {rows && visible.length > 0 && (
           <TablePagination
             component="div" count={visible.length} page={page} rowsPerPage={PAGE_SIZE} rowsPerPageOptions={[PAGE_SIZE]}
-            onPageChange={(_, p) => setPage(p)}
+            onPageChange={(_, p) => { setPage(p); window.scrollTo({ top: 0 }); }}
             sx={{ '& .MuiTablePagination-selectLabel, & .MuiTablePagination-input': { display: { xs: 'none', sm: 'block' } }, '& .MuiIconButton-root': { width: 44, height: 44 }, '& .MuiTablePagination-displayedRows': { fontSize: 16 } }}
           />
         )}
