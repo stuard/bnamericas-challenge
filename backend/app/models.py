@@ -31,11 +31,19 @@ class Editable(BaseModel):
 
 
 class SaveRequest(BaseModel):
-    """base = snapshot the browser loaded, mine = values to save, resolutions = choice per conflicting key."""
+    """base = snapshot the browser loaded, mine = values to save, resolutions = choice per conflicting key.
+
+    After a 409 the client keeps the ORIGINAL base (never base = current: that would revert every
+    field the other person changed) and sends resolutions plus ``seen``: conflict key -> the
+    ``theirs`` value that 409 showed for it. If the current value no longer equals ``seen[key]``,
+    that choice is not applied and a new 409 returns the fresh value. Without ``seen`` the choice
+    is applied as given.
+    """
 
     base: Editable
     mine: Editable
     resolutions: dict[str, Literal["mine", "theirs"]] | None = None
+    seen: dict[str, str | None] | None = None
 
 
 class Conflict(BaseModel):
@@ -48,7 +56,7 @@ class Conflict(BaseModel):
 
 
 class ConflictResponse(BaseModel):
-    """Body of the 409 answer; current is the new base for the retry."""
+    """Body of the 409 answer; current is what the person is shown; the retry keeps the original base and sends ``seen``."""
 
     type: str = "conflict"
     status: int = 409
