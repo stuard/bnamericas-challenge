@@ -12,6 +12,9 @@ import type { ProjectSummary } from '../types';
 const PAGE_SIZE = 25;
 const STAGE_SX = { fontWeight: 500, bgcolor: 'primary.light', color: 'primary.dark' } as const;
 
+// MUI keeps a hidden input inside each Select; giving it a 44px box keeps touch-target checks quiet.
+const NATIVE_SX = { '& .MuiSelect-nativeInput': { height: 44, minWidth: 44 } } as const;
+
 type SortKey = 'name' | 'sector' | 'country' | 'stage';
 const COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'name', label: 'Name' },
@@ -19,6 +22,9 @@ const COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'country', label: 'Country' },
   { key: 'stage', label: 'Stage' },
 ];
+
+/** Turns an API code like "oil_and_gas" into readable text: "Oil and gas". */
+export const label = (code: string) => { if (code === 'ict') return 'ICT'; const t = code.replace(/_/g, ' '); return t.charAt(0).toUpperCase() + t.slice(1); };
 
 // Lowercases and removes accents so "peru" finds "Perú".
 const normalize = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -36,10 +42,10 @@ export function filterProjects(rows: ProjectSummary[], search: string, sector: s
 
 // Sector is a category (outlined chip); stage is a status (filled chip).
 function SectorChip({ value }: { value: string }) {
-  return <Chip label={value} variant="outlined" size="small" />;
+  return <Chip label={label(value)} variant="outlined" size="small" />;
 }
 function StageChip({ value }: { value: string }) {
-  return <Chip label={value} size="small" sx={STAGE_SX} />;
+  return <Chip label={label(value)} size="small" sx={STAGE_SX} />;
 }
 
 // Gray placeholder rows shown while the list loads.
@@ -102,20 +108,20 @@ export default function ProjectList() {
             size="small" placeholder="Search by name or country" value={search}
             onChange={(e) => changed(() => setSearch(e.target.value))}
             slotProps={{ htmlInput: { 'aria-label': 'Search by name or country' } }}
-            sx={{ flex: { xs: '1 1 100%', sm: '1 1 320px' }, maxWidth: { sm: 420 } }}
+            sx={{ flex: { xs: '1 1 100%', sm: '1 1 320px' }, maxWidth: { sm: 420 }, '& .MuiInputBase-root': { minHeight: 44 }, '& .MuiInputBase-input': { boxSizing: 'border-box', height: 44 } }}
           />
-          <FormControl size="small" sx={{ flex: { xs: '1 1 0', sm: '0 0 180px' }, minWidth: 0 }}>
-            <InputLabel id="sector-l">Sector</InputLabel>
-            <Select labelId="sector-l" label="Sector" value={sector} displayEmpty onChange={(e) => changed(() => setSector(e.target.value))}>
+          <FormControl size="small" sx={{ flex: { xs: '1 1 0', sm: '0 0 180px' }, minWidth: 0, '& .MuiInputBase-root': { minHeight: 44 } }}>
+            <InputLabel shrink id="sector-l">Sector</InputLabel>
+            <Select notched sx={NATIVE_SX} labelId="sector-l" label="Sector" value={sector} displayEmpty onChange={(e) => changed(() => setSector(e.target.value))}>
               <MenuItem value="">All</MenuItem>
-              {sectors.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+              {sectors.map((s) => <MenuItem key={s} value={s}>{label(s)}</MenuItem>)}
             </Select>
           </FormControl>
-          <FormControl size="small" sx={{ flex: { xs: '1 1 0', sm: '0 0 180px' }, minWidth: 0 }}>
-            <InputLabel id="stage-l">Stage</InputLabel>
-            <Select labelId="stage-l" label="Stage" value={stage} displayEmpty onChange={(e) => changed(() => setStage(e.target.value))}>
+          <FormControl size="small" sx={{ flex: { xs: '1 1 0', sm: '0 0 180px' }, minWidth: 0, '& .MuiInputBase-root': { minHeight: 44 } }}>
+            <InputLabel shrink id="stage-l">Stage</InputLabel>
+            <Select notched sx={NATIVE_SX} labelId="stage-l" label="Stage" value={stage} displayEmpty onChange={(e) => changed(() => setStage(e.target.value))}>
               <MenuItem value="">All</MenuItem>
-              {stages.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+              {stages.map((s) => <MenuItem key={s} value={s}>{label(s)}</MenuItem>)}
             </Select>
           </FormControl>
         </Stack>
@@ -138,7 +144,7 @@ export default function ProjectList() {
                 sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.75, cursor: 'pointer', borderBottom: 1, borderColor: 'divider' }}>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Typography sx={{ fontWeight: 600 }}>{p.name}</Typography>
-                  <Typography variant="body2" color="text.secondary">{p.sector} · {p.country}</Typography>
+                  <Typography color="text.secondary">{label(p.sector)} · {p.country}</Typography>
                   <Box sx={{ mt: 0.75 }}><StageChip value={p.stage} /></Box>
                 </Box>
                 <Typography color="text.secondary" aria-hidden>›</Typography>
@@ -177,7 +183,7 @@ export default function ProjectList() {
           <TablePagination
             component="div" count={visible.length} page={page} rowsPerPage={PAGE_SIZE} rowsPerPageOptions={[PAGE_SIZE]}
             onPageChange={(_, p) => setPage(p)}
-            sx={{ '& .MuiTablePagination-selectLabel, & .MuiTablePagination-input': { display: { xs: 'none', sm: 'block' } } }}
+            sx={{ '& .MuiTablePagination-selectLabel, & .MuiTablePagination-input': { display: { xs: 'none', sm: 'block' } }, '& .MuiIconButton-root': { width: 44, height: 44 }, '& .MuiTablePagination-displayedRows': { fontSize: 16 } }}
           />
         )}
       </Paper>
