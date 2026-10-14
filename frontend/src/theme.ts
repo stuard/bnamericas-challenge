@@ -9,7 +9,7 @@ const theme = createTheme({
     text: { primary: '#1F2937', secondary: '#4B5563' },
     divider: '#E3E6EB',
   },
-  typography: { fontFamily: 'Inter, system-ui, sans-serif' },
+  typography: { fontFamily: 'Inter, system-ui, sans-serif', body1: { fontSize: '1rem' } },
   components: {
     MuiAppBar: {
       defaultProps: { position: 'static' },
