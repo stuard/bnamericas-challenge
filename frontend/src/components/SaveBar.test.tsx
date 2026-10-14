@@ -9,7 +9,7 @@ const setup = (status: SaveStatus, dirtyCount = 2, savedAt?: Date) => {
   return fns;
 };
 const save = () => screen.getByRole('button', { name: 'Save changes' });
-const discard = () => screen.getByRole('button', { name: 'Discard changes' });
+const discard = () => screen.getByRole('button', { name: 'Discard' });
 
 describe('SaveBar', () => {
   it('clean: no message, both buttons disabled', () => {
@@ -41,14 +41,29 @@ describe('SaveBar', () => {
   it('verifying: amber notice, buttons disabled', () => {
     setup('verifying');
     expect(screen.getByText('Checking whether it was saved…')).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent(/took too long/);
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.queryByText(/took too long/)).toBeNull();
     expect(save()).toBeDisabled();
     expect(discard()).toBeDisabled();
   });
   it('error: message with Retry', () => {
     setup('error');
-    expect(screen.getByText(/Could not save/)).toBeInTheDocument();
+    expect(screen.getByText(/We could not save\. Your changes are still on this page\./)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Retry' })).toBeEnabled();
+  });
+  it('buttons are sentence case, never wrap, and are at least 44px tall', () => {
+    setup('dirty');
+    for (const b of [save(), discard()]) {
+      const st = getComputedStyle(b);
+      expect(st.textTransform).toBe('none');
+      expect(st.fontWeight).toBe('600');
+      expect(st.whiteSpace).toBe('nowrap');
+      expect(st.minHeight).toBe('44px');
+    }
+  });
+  it('verifying uses the hourglass icon', () => {
+    setup('verifying');
+    expect(document.querySelector('[data-testid="HourglassEmptyIcon"]')).not.toBeNull();
   });
   it('fires onSave, onDiscard and onRetry', async () => {
     const a = setup('dirty');

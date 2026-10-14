@@ -36,6 +36,18 @@ export function conflictTitle(c: Conflict): string {
   return c.label ? `${name} · ${c.label}` : name;
 }
 
+const BTN = { minHeight: 44, textTransform: 'none', fontWeight: 600 } as const;
+
+/** 'name' becomes 'Name'; 'key_date:tender launch' becomes 'Date "tender launch"'; 'name|mine' adds who changed it. */
+export function mergedLabel(entry: string): string {
+  const [key, who] = entry.split('|');
+  const [kind, ...rest] = key.split(':');
+  const label = rest.join(':');
+  const base = kind === 'key_date' || kind === 'key_dates' ? 'Date' : kind === 'linked_company' ? 'Linked company' : FIELD_NAMES[kind] ?? kind;
+  const text = label ? `${base} "${label}"` : base;
+  return who === 'mine' ? `${text} (your change)` : who === 'theirs' ? `${text} (their change)` : text;
+}
+
 function Option({ choice, who, value }: { choice: Choice; who: string; value: string }) {
   return (
     <Box
@@ -75,15 +87,16 @@ export function ConflictDialog({ open, conflicts, autoMerged, onResolve, onBack 
       onClose={onBack}
       scroll="paper"
       fullWidth
-      maxWidth="md"
+      maxWidth={false}
       aria-labelledby="conflict-title"
       PaperProps={{
         sx: {
+          maxWidth: 760,
           '@media (max-width:599.95px)': { m: 0, width: '100%', maxWidth: 'none', height: '100%', maxHeight: 'none', borderRadius: 0 },
         },
       }}
     >
-      <DialogTitle id="conflict-title" sx={{ fontWeight: 700 }}>
+      <DialogTitle id="conflict-title" sx={{ fontWeight: 700, fontSize: { xs: 18, sm: 20 } }}>
         Someone else saved this project while you were editing
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1, fontWeight: 400 }}>
           {conflicts.length === 1 ? 'You both changed the same field.' : `You both changed the same thing in ${conflicts.length} fields.`}{' '}
@@ -93,8 +106,8 @@ export function ConflictDialog({ open, conflicts, autoMerged, onResolve, onBack 
       <DialogContent dividers>
         <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5, color: 'text.secondary', fontSize: 14, mb: 1 }}>
           <span>Choose for all:</span>
-          <Button size="small" onClick={() => pickAll('mine')} sx={{ minHeight: 44 }}>My values</Button>
-          <Button size="small" onClick={() => pickAll('theirs')} sx={{ minHeight: 44 }}>Current values</Button>
+          <Button size="small" onClick={() => pickAll('mine')} sx={BTN}>My values</Button>
+          <Button size="small" onClick={() => pickAll('theirs')} sx={BTN}>Current values</Button>
         </Box>
         {conflicts.map((c) => (
           <Box key={c.key} component="fieldset" sx={{ border: 0, p: 0, m: 0, mb: 3 }}>
@@ -112,22 +125,22 @@ export function ConflictDialog({ open, conflicts, autoMerged, onResolve, onBack 
         ))}
         {autoMerged.length > 0 && (
           <Box sx={{ bgcolor: '#F1F3F6', borderRadius: 1, p: 1.5, fontSize: 14, color: 'text.secondary' }}>
-            <strong>Merged without conflict:</strong> {autoMerged.join(' · ')}
+            <strong>Merged without conflict:</strong> {autoMerged.map(mergedLabel).join(' · ')}
           </Box>
         )}
       </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2, gap: 1, flexWrap: 'wrap' }}>
+      <DialogActions sx={{ px: 3, py: 2, gap: 1, flexWrap: 'wrap', '& > :not(style) ~ :not(style)': { ml: 0 } }}>
         <Typography variant="body2" color="text.secondary" sx={{ flex: '1 1 100%', '@media (min-width:600px)': { flex: 1 } }}>
           {missing.length > 0 && `Choose ${missing.length} more field${missing.length === 1 ? '' : 's'}: ${missing.map(conflictTitle).join(', ')}`}
         </Typography>
-        <Button onClick={onBack} sx={{ minHeight: 44, flex: { xs: '1 1 100%', sm: 'none' }, order: { xs: 3, sm: 0 } }}>
+        <Button onClick={onBack} sx={{ ...BTN, flex: { xs: '1 1 0', sm: 'none' }, order: { xs: 2, sm: 0 }, minWidth: 0 }}>
           Back to the form
         </Button>
         <Button
           variant="contained"
           onClick={resolve}
           disabled={missing.length > 0}
-          sx={{ minHeight: 44, flex: { xs: '1 1 100%', sm: 'none' }, order: { xs: 2, sm: 0 } }}
+          sx={{ ...BTN, flex: { xs: '2 1 0', sm: 'none' }, order: { xs: 3, sm: 0 }, minWidth: 0 }}
         >
           Save my selection
         </Button>

@@ -1,6 +1,7 @@
 import { Box, Button, CircularProgress } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 
 export type SaveStatus = 'clean' | 'dirty' | 'saving' | 'saved' | 'verifying' | 'error';
 
@@ -12,6 +13,8 @@ export interface SaveBarProps {
   onDiscard: () => void;
   onRetry: () => void;
 }
+
+const BTN = { minHeight: 44, minWidth: 44, textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap' } as const;
 
 function clock(date?: Date): string {
   if (!date) return '';
@@ -51,7 +54,7 @@ export function SaveBar({ dirtyCount, status, savedAt, onSave, onDiscard, onRetr
   } else if (status === 'verifying') {
     line = (
       <>
-        <CircularProgress size={18} aria-hidden />
+        <HourglassEmptyIcon fontSize="small" aria-hidden />
         Checking whether it was saved…
       </>
     );
@@ -59,8 +62,8 @@ export function SaveBar({ dirtyCount, status, savedAt, onSave, onDiscard, onRetr
     line = (
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'error.main' }}>
         <ErrorOutlineIcon fontSize="small" aria-hidden />
-        Could not save ·
-        <Button size="small" onClick={onRetry} sx={{ minHeight: 44, fontWeight: 600 }}>
+        We could not save. Your changes are still on this page.
+        <Button size="small" onClick={onRetry} sx={BTN}>
           Retry
         </Button>
       </Box>
@@ -80,15 +83,6 @@ export function SaveBar({ dirtyCount, status, savedAt, onSave, onDiscard, onRetr
         borderColor: 'divider',
       }}
     >
-      {status === 'verifying' && (
-        <Box
-          role="status"
-          sx={{ bgcolor: '#FFF4E0', color: '#5C3B00', px: { xs: 2, sm: 4 }, py: 1.5, fontSize: 14 }}
-        >
-          <strong>The server took too long to answer.</strong> We are checking whether your changes were saved before
-          trying again. Do not close this page.
-        </Box>
-      )}
       <Box
         sx={{
           maxWidth: 1280,
@@ -103,22 +97,22 @@ export function SaveBar({ dirtyCount, status, savedAt, onSave, onDiscard, onRetr
       >
         <Box
           aria-live="polite"
-          sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary', flex: { xs: '1 1 100%', sm: 1 } }}
+          sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary', flex: { xs: '1 1 100%', sm: 1 }, flexWrap: 'wrap' }}
         >
           {line}
         </Box>
         <Button
           onClick={onDiscard}
           disabled={busy || dirtyCount === 0}
-          sx={{ minHeight: 44, flex: { xs: 1, sm: 'none' } }}
+          sx={{ ...BTN, flex: { xs: 1, sm: 'none' } }}
         >
-          Discard changes
+          Discard
         </Button>
         <Button
           variant="contained"
           onClick={onSave}
           disabled={!canSave}
-          sx={{ minHeight: 44, flex: { xs: 2, sm: 'none' } }}
+          sx={{ ...BTN, flex: { xs: 2, sm: 'none' } }}
         >
           Save changes
         </Button>

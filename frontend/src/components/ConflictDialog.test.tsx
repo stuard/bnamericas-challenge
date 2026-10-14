@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
-import { ConflictDialog, formatValue } from './ConflictDialog';
+import { ConflictDialog, formatValue, mergedLabel } from './ConflictDialog';
 import type { Conflict } from '../types';
 
 const conflicts: Conflict[] = [
@@ -61,7 +61,24 @@ describe('ConflictDialog', () => {
     expect(screen.queryByText(/Merged without conflict/)).toBeNull();
     unmount();
     setup(['name', 'country']);
-    expect(screen.getByText(/Merged without conflict/).parentElement).toHaveTextContent('name · country');
+    expect(screen.getByText(/Merged without conflict/).parentElement).toHaveTextContent('Name · Country');
+    expect(screen.getByText(/Merged without conflict/).parentElement).not.toHaveTextContent('name · country');
+  });
+  it('names merged fields and who changed them when known', () => {
+    expect(mergedLabel('name')).toBe('Name');
+    expect(mergedLabel('name|mine')).toBe('Name (your change)');
+    expect(mergedLabel('country|theirs')).toBe('Country (their change)');
+    expect(mergedLabel('key_date:tender launch|theirs')).toBe('Date "tender launch" (their change)');
+  });
+  it('dialog is 760px wide at most and buttons are sentence case, 44px tall', () => {
+    setup();
+    expect(getComputedStyle(document.querySelector('.MuiDialog-paper') as Element).maxWidth).toBe('760px');
+    for (const n of ['Back to the form', 'Save my selection', 'My values', 'Current values']) {
+      const st = getComputedStyle(screen.getByRole('button', { name: n }));
+      expect(st.textTransform).toBe('none');
+      expect(st.fontWeight).toBe('600');
+      expect(st.minHeight).toBe('44px');
+    }
   });
   it('formats dates for people and keeps other text', () => {
     setup();
