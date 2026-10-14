@@ -64,6 +64,8 @@ export interface SaveRequest {
   base: Editable;
   mine: Editable;
   resolutions?: Record<string, 'mine' | 'theirs'> | null;
+  /** Conflict key -> the value of theirs the last 409 showed for it. */
+  seen?: Record<string, string | null> | null;
 }
 
 /** What saveProject gives back: either saved or a conflict to resolve. */

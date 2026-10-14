@@ -134,12 +134,17 @@ export default function ProjectEdit() {
   const invalid = !!form && (!form.name.trim() || !form.country.trim() || form.key_dates.some((d) => !d.label.trim() || !d.date));
 
   // Always sends the base the person loaded: it only changes after a save is acknowledged, so others' changes are never overwritten.
-  const send = async (from: Editable, resolutions?: Record<string, 'mine' | 'theirs'>, verifying = false): Promise<void> => {
+  const send = async (
+    from: Editable,
+    resolutions?: Record<string, 'mine' | 'theirs'>,
+    seen?: Record<string, string | null>,
+    verifying = false,
+  ): Promise<void> => {
     if (!form) return;
     setPhase(verifying ? 'verifying' : 'saving');
     setSaveError('');
     try {
-      const r = await saveProject(id, from, form, resolutions);
+      const r = await saveProject(id, from, form, resolutions, seen);
       if (r.kind === 'saved') applySaved(r.project);
       else {
         setConflict({ current: r.current, conflicts: r.conflicts, autoMerged: r.autoMerged });
@@ -152,7 +157,7 @@ export default function ProjectEdit() {
           applySaved({ ...current, id } as Project);
           return;
         }
-        return send(from, resolutions, true);
+        return send(from, resolutions, seen, true);
       }
       setSaveError(err instanceof Error ? err.message : 'Unknown error');
       setPhase('error');
@@ -179,7 +184,13 @@ export default function ProjectEdit() {
   };
 
   const onResolve = (resolutions: Record<string, 'mine' | 'theirs'>) => {
-    if (conflict && base) void send(base, resolutions);
+    if (!conflict || !base) return;
+    // seen = the value each resolved conflict showed as theirs, so the server can tell if it changed again.
+    const seen: Record<string, string | null> = {};
+    conflict.conflicts.forEach((c) => {
+      if (c.key in resolutions) seen[c.key] = c.theirs ?? null;
+    });
+    void send(base, resolutions, seen);
   };
 
   if (load.kind === 'loading') {
@@ -223,7 +234,7 @@ export default function ProjectEdit() {
         </Button>
         <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, flexWrap: 'wrap', mb: 3 }}>
           <Typography component="h1" sx={{ fontSize: { xs: 22, md: 28 }, fontWeight: 700 }}>{title}</Typography>
-          <Typography color="text.secondary" sx={{ fontSize: 14 }}>ID {id}</Typography>
+          <Typography color="text.secondary" sx={{ fontSize: 16 }}>ID {id}</Typography>
         </Box>
         {phase === 'verifying' && (
           <Alert severity="warning" sx={{ mb: 3 }}>
@@ -237,7 +248,7 @@ export default function ProjectEdit() {
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
               <Typography component="h2" sx={{ fontSize: 18, fontWeight: 600 }}>General data</Typography>
-              <Typography color="text.secondary" sx={{ fontSize: 14, mb: 3 }}>Fields with a blue border have unsaved changes.</Typography>
+              <Typography color="text.secondary" sx={{ fontSize: 16, mb: 3 }}>Fields with a blue border have unsaved changes.</Typography>
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0,1fr)', md: 'minmax(0,1fr) minmax(0,1fr)' }, gap: { xs: 2.5, md: 3 } }}>
                 <TextField
                   label="Name" value={form.name} onChange={(e) => edit({ name: e.target.value })}
@@ -265,7 +276,7 @@ export default function ProjectEdit() {
             </Paper>
             <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
               <Typography component="h2" sx={{ fontSize: 18, fontWeight: 600 }}>Key dates</Typography>
-              <Typography color="text.secondary" sx={{ fontSize: 14, mb: 3 }}>
+              <Typography color="text.secondary" sx={{ fontSize: 16, mb: 3 }}>
                 Each date is identified by its label: if two people change the same one, we will ask which one stays.
               </Typography>
               <KeyDatesEditor value={form.key_dates} onChange={(key_dates) => edit({ key_dates })} changedLabels={changedLabels} showErrors={showErrors} />
@@ -273,7 +284,7 @@ export default function ProjectEdit() {
           </Box>
           <Paper variant="outlined" component="aside" sx={{ p: { xs: 2, md: 3 } }}>
             <Typography component="h2" sx={{ fontSize: 18, fontWeight: 600 }}>Linked companies</Typography>
-            <Typography color="text.secondary" sx={{ fontSize: 14, mb: 2 }}>Read-only in this version. Sent unchanged when you save.</Typography>
+            <Typography color="text.secondary" sx={{ fontSize: 16, mb: 2 }}>Read-only in this version. Sent unchanged when you save.</Typography>
             {form.linked_companies.length === 0 && <Typography color="text.secondary">No linked companies</Typography>}
             <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0 }}>
               {form.linked_companies.map((c, i) => (
@@ -281,8 +292,8 @@ export default function ProjectEdit() {
                   component="li" key={i}
                   sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, py: 1.25, borderTop: i === 0 ? 'none' : '1px solid', borderColor: 'divider' }}
                 >
-                  <Typography sx={{ fontSize: 15 }}>{c.name}</Typography>
-                  <Typography color="text.secondary" sx={{ fontSize: 14, textAlign: 'right' }}>{ROLES[c.role] ?? c.role}</Typography>
+                  <Typography sx={{ fontSize: 16 }}>{c.name}</Typography>
+                  <Typography color="text.secondary" sx={{ fontSize: 16, textAlign: 'right' }}>{ROLES[c.role] ?? c.role}</Typography>
                 </Box>
               ))}
             </Box>
