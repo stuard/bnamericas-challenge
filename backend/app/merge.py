@@ -132,17 +132,30 @@ def decide(base: str | None, mine: str | None, current: str | None) -> str:
     return "conflict"
 
 
-def apply_resolutions(conflicts: list[Conflict], resolutions: dict[str, str] | None) -> tuple[dict[str, str], list[Conflict]]:
+def _seen_value(key: str, value: str | None) -> str | None:
+    """Normalise a ``seen`` value like the merge does (None stays None)."""
+    if value is None:
+        return None
+    return normalise_date(value) if key.startswith("key_dates:") else normalise_text(value)
+
+
+def apply_resolutions(conflicts: list[Conflict], resolutions: dict[str, str] | None,
+                      seen: dict[str, str | None] | None = None) -> tuple[dict[str, str], list[Conflict]]:
     """Split conflicts using the person's choices.
 
     Returns ``(chosen, unresolved)``: ``chosen`` maps a conflict key to ``"mine"`` or
-    ``"theirs"``; ``unresolved`` keeps the conflicts with no valid choice.
+    ``"theirs"``; ``unresolved`` keeps the conflicts with no valid choice. A choice whose key
+    is in ``seen`` is valid only while the current value still equals the value the person saw.
     """
     wanted = {normalise_key(k): v for k, v in (resolutions or {}).items() if v in ("mine", "theirs")}
+    seen_by_key = {normalise_key(k): v for k, v in (seen or {}).items()}
     chosen: dict[str, str] = {}
     unresolved: list[Conflict] = []
     for conflict in conflicts:
         choice = wanted.get(normalise_key(conflict.key))
+        nkey = normalise_key(conflict.key)
+        if choice and nkey in seen_by_key and _seen_value(conflict.key, seen_by_key[nkey]) != conflict.theirs:
+            choice = None
         if choice:
             chosen[conflict.key] = choice
         else:
@@ -164,11 +177,14 @@ def _build_list(field: str, keys: list[str], winners: dict[str, FlatField]) -> l
     return out
 
 
-def three_way_merge(base: dict, mine: dict, current: dict, resolutions: dict[str, str] | None = None) -> MergeResult:
+def three_way_merge(base: dict, mine: dict, current: dict, resolutions: dict[str, str] | None = None,
+                    seen: dict[str, str | None] | None = None) -> MergeResult:
     """Merge ``mine`` into ``current`` using ``base`` as the common ancestor.
 
     ``resolutions`` maps a conflict key to ``"mine"`` or ``"theirs"``. A conflict without a
     choice stays in ``.conflicts`` and the merged value keeps the current (theirs) side.
+    ``seen`` maps a conflict key to the current value the person saw; a choice is ignored
+    (the conflict stays open) when the current value is no longer that one.
     """
     fb, fm, fc = flatten(base), flatten(mine), flatten(current)
     keys = list(dict.fromkeys([*fc, *fm, *fb]))
@@ -190,7 +206,7 @@ def three_way_merge(base: dict, mine: dict, current: dict, resolutions: dict[str
         if key in source:
             winners[key] = source[key]
 
-    chosen, unresolved = apply_resolutions(conflicts, resolutions)
+    chosen, unresolved = apply_resolutions(conflicts, resolutions, seen)
     for conflict in conflicts:
         pick = chosen.get(conflict.key)
         source = fm if pick == "mine" else fc  # unresolved falls back to theirs

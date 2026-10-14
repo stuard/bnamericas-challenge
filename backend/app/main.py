@@ -42,7 +42,7 @@ async def save_project(client: UpstreamClient, project_id: str, req: SaveRequest
     current = norm(editable_of(raw))
     attempts = 0
     while True:
-        result = merge.three_way_merge(base, mine, current, req.resolutions)
+        result = merge.three_way_merge(base, mine, current, req.resolutions, req.seen)
         auto = list(result.auto_merged)
         if result.conflicts:
             return conflict_response("conflict", "The project changed while you were editing", current, result.conflicts, auto)
