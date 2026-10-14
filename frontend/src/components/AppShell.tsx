@@ -80,8 +80,8 @@ export default function AppShell() {
         </Toolbar>
       </AppBar>
       {inDocs && (
-        <Box component="nav" aria-label="Documentation" sx={{ bgcolor: 'background.paper', borderBottom: '1px solid', borderColor: 'divider' }}>
-          <Box sx={{ maxWidth: 1440, mx: 'auto', px: { xs: 1, md: 3 }, display: 'flex', gap: 1, overflowX: 'auto' }}>
+        <Box component="nav" aria-label="Documentation" sx={{ bgcolor: 'background.paper', borderBottom: '1px solid', borderColor: 'divider', width: '100%', maxWidth: '100vw', minWidth: 0 }}>
+          <Box data-testid="docs-tabs" sx={{ maxWidth: 1440, width: '100%', boxSizing: 'border-box', mx: 'auto', px: { xs: 1, md: 3 }, display: 'flex', gap: 1, overflowX: 'auto', overflowY: 'hidden', overscrollBehaviorX: 'contain', WebkitOverflowScrolling: 'touch' }}>
             {DOCS.map((d) => {
               const on = pathname === d.to;
               return (
@@ -91,7 +91,7 @@ export default function AppShell() {
                   to={d.to}
                   aria-current={on ? 'page' : undefined}
                   sx={{
-                    display: 'flex', alignItems: 'center', minHeight: 48, px: 2, fontWeight: 500, fontSize: 15,
+                    display: 'flex', alignItems: 'center', flex: '0 0 auto', minHeight: 48, minWidth: 44, px: 2, fontWeight: 500, fontSize: 15,
                     textDecoration: 'none', whiteSpace: 'nowrap',
                     color: on ? 'primary.main' : 'text.secondary',
                     borderBottom: '2px solid', borderColor: on ? 'primary.main' : 'transparent',
