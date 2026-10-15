@@ -274,7 +274,7 @@ except ValidationError as exc:
 
 ### `backend/app/main.py::conflict_response`
 
-**What it does:** Builds the `409` answer. It carries `current` (what the upstream holds now, which becomes the browser's new `base`), the list of `conflicts` for the dialog, and the keys that merged cleanly.
+**What it does:** Builds the `409` answer. It carries `current` (what the upstream holds now, shown in the dialog; the browser keeps its original `base`), the list of `conflicts` for the dialog, and the keys that merged cleanly.
 
 **Takes:**
 
@@ -316,6 +316,7 @@ The heart of safe concurrent editing: a pure three-way merge (no network, no glo
 - `mine`: `dict`, the snapshot with the person's edits.
 - `current`: `dict`, the snapshot the upstream holds now.
 - `resolutions`: `dict[str, "mine" | "theirs"] | None`, the person's choice per conflicting key, for example `{"stage": "mine"}`.
+- `seen`: `dict[str, str | None] | None`, per key the `theirs` value the person saw in the 409, for example `{"stage": "construction"}`. A choice counts only while the current value still equals it; otherwise the conflict stays open.
 
 **Returns:** a `MergeResult`. `merged` is the full snapshot to write; `conflicts` are the undecided ones (an undecided field keeps the current value in `merged`); `auto_merged` lists keys that merged without a fight.
 
@@ -337,6 +338,8 @@ print([(c.key, c.mine, c.theirs) for c in clash.conflicts])  # -> [('stage', 'fi
 print(clash.merged["stage"])  # -> construction
 chosen = three_way_merge(base, {**base, "stage": "financing"}, {**base, "stage": "construction"}, {"stage": "mine"})
 print(chosen.merged["stage"], chosen.conflicts)  # -> financing []
+stale = three_way_merge(base, {**base, "stage": "financing"}, {**base, "stage": "construction"}, {"stage": "mine"}, {"stage": "idea"})
+print([c.key for c in stale.conflicts], stale.merged["stage"])  # -> ['stage'] construction
 ```
 
 ### `backend/app/merge.py::flatten`
@@ -390,8 +393,9 @@ print(decide(None, "x", None))  # -> mine
 
 - `conflicts`: `list[Conflict]`.
 - `resolutions`: `dict[str, str] | None`, for example `{"stage": "mine"}`.
+- `seen`: `dict[str, str | None] | None`, the `theirs` value the person saw per key, for example `{"stage": "z"}`.
 
-**Returns:** a tuple `(chosen, unresolved)`: `chosen` is `{"stage": "mine"}`-shaped, `unresolved` is the list of conflicts with no valid choice.
+**Returns:** a tuple `(chosen, unresolved)`: `chosen` is `{"stage": "mine"}`-shaped, `unresolved` is the list of conflicts with no valid choice. A choice whose key is in `seen` is valid only while the conflict's current (`theirs`) value still equals the seen value; if the other person changed it again, the conflict stays unresolved so the person decides again.
 
 **Example:**
 
@@ -404,6 +408,8 @@ b = Conflict(key="country", field="country", base="x", mine="y", theirs="z")
 chosen, left = apply_resolutions([a, b], {"stage": "mine", "country": "maybe"})
 print(chosen)  # -> {'stage': 'mine'}
 print([c.key for c in left])  # -> ['country']
+chosen, left = apply_resolutions([a], {"stage": "mine"}, {"stage": "old"})
+print(chosen, [c.key for c in left])  # -> {} ['stage']
 ```
 
 ### `backend/app/merge.py::normalise_text`
@@ -769,11 +775,11 @@ print(e.model_dump_json())  # -> {"name":"Port Beta","sector":"transport","count
 
 ### `backend/app/models.py::SaveRequest`
 
-**What it does:** The body of `PUT /api/projects/{id}`. It carries the three things the stateless backend needs: `base` (the snapshot the browser loaded), `mine` (the values to save) and, after a conflict, `resolutions` (the person's choice for each conflicting key).
+**What it does:** The body of `PUT /api/projects/{id}`. It carries the three things the stateless backend needs: `base` (the snapshot the browser loaded), `mine` (the values to save) and, after a conflict, `resolutions` (the person's choice for each conflicting key) plus `seen` (the `theirs` value each conflict showed). The client keeps the ORIGINAL `base` on the retry, never `base = current`.
 
-**Takes:** `base: Editable`, `mine: Editable`, `resolutions: dict[str, "mine" | "theirs"] | None = None`, for example `{"stage": "mine"}`.
+**Takes:** `base: Editable`, `mine: Editable`, `resolutions: dict[str, "mine" | "theirs"] | None = None`, for example `{"stage": "mine"}`; `seen: dict[str, str | None] | None = None`, for example `{"stage": "construction"}` (the `theirs` value the 409 showed for that key). Without `seen` a choice is applied as given.
 
-**Returns:** a `SaveRequest`; example JSON `{"base": {...}, "mine": {...}, "resolutions": {"stage": "mine"}}`.
+**Returns:** a `SaveRequest`; example JSON `{"base": {...}, "mine": {...}, "resolutions": {"stage": "mine"}, "seen": {"stage": "construction"}}`.
 
 **Example:**
 
@@ -784,6 +790,7 @@ e = Editable(name="Port Beta", sector="transport", country="Peru", stage="idea",
 req = SaveRequest(base=e, mine=e, resolutions={"stage": "mine"})
 print(req.resolutions)  # -> {'stage': 'mine'}
 print(SaveRequest(base=e, mine=e).resolutions)  # -> None
+print(SaveRequest(base=e, mine=e, seen={"stage": "construction"}).seen)  # -> {'stage': 'construction'}
 ```
 
 ### `backend/app/models.py::Conflict`
@@ -805,7 +812,7 @@ print(c.model_dump_json())  # -> {"key":"stage","field":"stage","label":null,"ba
 
 ### `backend/app/models.py::ConflictResponse`
 
-**What it does:** The body of every `409`. `current` is the project as the upstream holds it now; the browser makes it the new `base`, shows the `conflicts`, and sends the choices back as `resolutions`. `type` is `conflict` normally, or `concurrent_overwrite_detected` when someone saved between our write and our check.
+**What it does:** The body of every `409`. `current` is the project as the upstream holds it now; the browser shows it and the `conflicts` in the dialog (it does not become the new `base`; the browser keeps the ORIGINAL one) and sends the choices back as `resolutions` plus `seen`. `type` is `conflict` normally, or `concurrent_overwrite_detected` when someone saved between our write and our check (our write landed and was overwritten; `conflicts` is empty).
 
 **Takes:** `current: Editable`, `conflicts: list[Conflict]`, `auto_merged: list[str] = []` (`["name"]`), `type: str = "conflict"`, `status: int = 409`, `title: str` (default "The project changed while you were editing").
 

@@ -188,7 +188,7 @@ cd frontend && npm install && npm run dev
 2. Click the search box (it says "Search by name or country") and type `Lumbara`.
 3. Click **Paso Lumbara Transmission Line**. The edit form opens.
 
-**You should see:** the list with 25 projects per page, and after your search a single row, "Paso Lumbara Transmission Line", with sector Energy, country Chile and stage Tender.
+**You should see:** the list with 10 projects per page, and after your search a single row, "Paso Lumbara Transmission Line", with sector Energy, country Chile and stage Tender.
 
 > **If you see this error**
 > **Could not load projects** (a red box with a Retry button)
