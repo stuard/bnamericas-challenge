@@ -88,11 +88,11 @@ it('gets one project and encodes the id', async () => {
 
 ### `frontend/src/api.ts::saveProject`
 
-**What it does:** Sends your edits to the backend with `PUT /api/projects/{id}`. It sends three things so the backend can merge safely without remembering anything: `base` (what you loaded), `mine` (what you want now) and, after a conflict, `resolutions` (for each conflicting field, `'mine'` or `'theirs'`). A 409 answer is not an error here: it becomes a normal `{ kind: 'conflict' }` result so the screen can open the conflict dialog. `SaveResult` is the union `{ kind: 'saved', project, autoMerged } | { kind: 'conflict', current, conflicts, autoMerged }` (in `types.ts`).
+**What it does:** Sends your edits to the backend with `PUT /api/projects/{id}`. It sends three things so the backend can merge safely without remembering anything: `base` (what you loaded), `mine` (what you want now) and, after a conflict, `resolutions` (for each conflicting field, `'mine'` or `'theirs'`) plus `seen` (for each of those fields, the `theirs` value the 409 showed; it is only sent together with `resolutions`). `base` stays the ORIGINAL loaded copy on every retry. A 409 answer is not an error here: it becomes a normal `{ kind: 'conflict' }` result so the screen can open the conflict dialog. `SaveResult` is the union `{ kind: 'saved', project, autoMerged } | { kind: 'conflict', current, conflicts, autoMerged }` (in `types.ts`).
 
-**Takes:** `id: string` (`'12'`); `base: Editable` (the six fields as loaded); `mine: Editable` (the six fields as edited); `resolutions?: Record<string, 'mine' | 'theirs'>` (for example `{ name: 'mine' }`, optional).
+**Takes:** `id: string` (`'12'`); `base: Editable` (the six fields as loaded); `mine: Editable` (the six fields as edited); `resolutions?: Record<string, 'mine' | 'theirs'>` (for example `{ name: 'mine' }`, optional); `seen?: Record<string, string | null>` (for example `{ name: 'Solar B' }`, optional, sent only with `resolutions`).
 
-**Returns:** A promise of `SaveResult`. Saved: `{ kind: 'saved', project, autoMerged: ['name'] }`, where `autoMerged` lists fields the backend merged for you. Conflict: `{ kind: 'conflict', current, conflicts: [{ key: 'name', field: 'name', ... }], autoMerged }`, where `current` is the newest server data and becomes the next `base`. Any other failure (404, 422, 502, 504) throws `ApiError`.
+**Returns:** A promise of `SaveResult`. Saved: `{ kind: 'saved', project, autoMerged: ['name'] }`, where `autoMerged` lists fields the backend merged for you. Conflict: `{ kind: 'conflict', current, conflicts: [{ key: 'name', field: 'name', ... }], autoMerged }`, where `current` is the newest server data. It is shown in the dialog but is NOT used as the next `base`. Any other failure (404, 422, 502, 504) throws `ApiError`.
 
 **Example:**
 
@@ -560,7 +560,7 @@ it('needs all the words', () => {
 
 ### `frontend/src/pages/ProjectList.tsx::ProjectList`
 
-**What it does:** The home screen. It loads the list once with `listProjects()` (a grey skeleton while waiting, an error with Retry if it fails), then shows a searchable, filterable, sortable table, 25 rows per page. Clicking a column header sorts (a second click reverses). Changing a filter returns to page one. On phones (under 600 px) the table becomes a list of cards. Clicking a row goes to `/projects/:id`. Sector and Stage menus are built from the values present in the data.
+**What it does:** The home screen. It loads the list once with `listProjects()` (a grey skeleton while waiting, an error with Retry if it fails), then shows a searchable, filterable, sortable table, 10 rows per page by default (the page-size menu offers 10, 25 and 50). Clicking a column header sorts (a second click reverses). Changing a filter returns to page one. On phones (under 600 px) the table becomes a list of cards. Clicking a row goes to `/projects/:id`. Sector and Stage menus are built from the values present in the data.
 
 **Takes:** No props. It needs a router (it calls `useNavigate`) and the MUI theme. All data comes from `listProjects` in `api.ts`.
 
@@ -667,7 +667,7 @@ it('counts scalar changes and key date changes once each', () => {
 
 ### `frontend/src/pages/ProjectEdit.tsx::ProjectEdit`
 
-**What it does:** The edit screen for one project at `/projects/:id`. It loads the project, keeps two copies (`base` = as loaded, `form` = what you type), marks changed fields with a blue border and counts them. `Save` sends `base` and `form` to `saveProject`. If the answer is a conflict it opens `ConflictDialog` and re-sends with your choices, using the newest server data as the new base. If the server times out (504) and returned the current data, it checks whether your change already landed, and retries once if not (the 'verifying' state). It also warns before you leave with unsaved changes. Linked companies are shown read-only.
+**What it does:** The edit screen for one project at `/projects/:id`. It loads the project, keeps two copies (`base` = as loaded, `form` = what you type), marks changed fields with a blue border and counts them. `Save` sends `base` and `form` to `saveProject`. If the answer is a conflict it opens `ConflictDialog`; when you choose, it re-sends the ORIGINAL `base` (never the newest server data) with your `resolutions` and `seen` (the `theirs` value each conflict showed). If the other person changed that field again meanwhile, the backend answers a new 409 and the dialog opens again with the fresh value. If the server times out (504) and returned the current data, it checks whether your change already landed, and retries once if not (the 'verifying' state), again with the original `base`. It also warns before you leave with unsaved changes. Linked companies are shown read-only.
 
 **Takes:** No props. The id comes from the URL (`useParams`). Needs a router; it calls `getProject` and `saveProject` from `api.ts` and renders `KeyDatesEditor`, `SaveBar` and `ConflictDialog`.
 

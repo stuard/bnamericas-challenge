@@ -10,12 +10,12 @@ A save sends `base` (the project as the person loaded it), `mine` (their edit) a
 - Only I changed it, or both made the same change: take mine.
 - Both changed it, differently: conflict.
 
-Different fields therefore both survive. Values are normalised first (trimmed text, ISO dates, linked companies by name) so formatting never causes a false conflict.
+Different fields therefore both survive. Values are normalised first (trimmed text, ISO dates) so formatting never causes a false conflict.
 
-**Key dates are matched by label, not by position.** Each date is its own field, keyed `key_dates:<label>` in lower case. Treating the whole list as one field would make any two date edits collide. Position would be unsafe: an inserted date shifts every index and the merge could overwrite the wrong date without a sound. A label is what a person recognises and it does not move. Cost: renaming a label looks like delete plus add, so two people renaming the same date differently see no conflict.
+**Key dates are matched by label, not by position.** Each date is its own field, keyed `key_dates:<label>` in lower case. Treating the whole list as one field would make any two date edits collide. Position would be unsafe: an inserted date shifts every index and the merge could overwrite the wrong date without a sound. A label is what a person recognises and it does not move. Cost: renaming a label looks like delete plus add.
 
 ## 409 on the same field
-When both sides changed the same field, nothing is written. The backend answers 409 with `current` and the list of conflicts. The person saving second chooses "mine" or "theirs" per field, and the browser retries with `base = current`, so the retry is checked against the newest data. We never pick a winner silently.
+When both sides changed the same field, nothing is written. The backend answers 409 with `current` and the list of conflicts. The person saving second chooses "mine" or "theirs" per field, and the browser retries with the ORIGINAL `base` it loaded, never `base = current` (that would revert the other person's fields). The retry sends `resolutions` plus `seen`, the value the 409 showed. If that field changed again, a new 409 comes back, so nobody overwrites a value they never saw.
 
 ## Stateless backend
 Three instances run side by side and the nightly import writes straight into the upstream. Any memory kept in an instance would be wrong sooner or later. So the merge base travels with the client on every save, and the backend re-reads the upstream each time. Any instance gives the same answer; `backend/tests/test_stateless.py` proves it with two instances and an import in between.
@@ -24,7 +24,7 @@ Three instances run side by side and the nightly import writes straight into the
 About 1 in 10 upstream saves answers 504, and a 504 does not say whether the write happened. Retrying blindly could duplicate or overwrite. On a 504 the backend reads the project again first. If the stored data already equals what we meant to write, it answers 200 (`confirmed_after_504`). If not, it merges again and retries, at most twice. If the re-read shows someone else changed the data meanwhile, it answers 409.
 
 ## The browser never calls the upstream
-The upstream has one shared API key, so the key must never reach a browser. The backend is also the one place where merging and the 504 check live. The frontend client (`frontend/src/api.ts`) accepts only `/api/...` paths.
+The upstream has one shared API key, so the key must never reach a browser. The backend is also the one place where merging and the 504 check live.
 
 ## What breaks first with 50 editors
 The upstream has no compare-and-swap, so read, merge and write is not atomic. Another save can land between our read and our write. Our verification read afterwards can detect it and answer 409 (`concurrent_overwrite_detected`), but the overwrite has already happened, so a small window remains. Fix: a version number or ETag in the upstream. After that, the single shared API key (no audit of who changed what) and the 2-second slow reads.

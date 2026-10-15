@@ -129,9 +129,9 @@ This is the one flow worth understanding well. Everything else is plumbing aroun
 ### The five steps
 
 1. **Open.** The browser asks `GET /api/projects/{id}` (`getProject` in `frontend/src/api.ts`). It keeps two copies of the editable fields: **`base`** (what was loaded, never changed) and the **form** values (what the person edits).
-2. **Save.** The person presses "Save changes". The browser sends `PUT /api/projects/{id}` with `{ base, mine }`, where `mine` is the form values. If the person is answering a conflict it also sends `resolutions`, for example `{"key_dates:award": "mine"}`.
+2. **Save.** The person presses "Save changes". The browser sends `PUT /api/projects/{id}` with `{ base, mine }`, where `mine` is the form values. If the person is answering a conflict it also sends `resolutions`, for example `{"key_dates:award": "mine"}`, and `seen`, the value each conflict showed as "theirs", for example `{"key_dates:award": "2027-05-01"}`.
 3. **Re-read.** The backend (`save_project` in `backend/app/main.py`) does not trust anything it remembers. It asks the upstream for the project **right now**: this is **`current`**.
-4. **Merge.** `three_way_merge(base, mine, current, resolutions)` in `backend/app/merge.py` compares the three copies field by field:
+4. **Merge.** `three_way_merge(base, mine, current, resolutions, seen)` in `backend/app/merge.py` compares the three copies field by field:
 
    | `mine` vs `base` | `current` vs `base` | Result for that field |
    |---|---|---|
@@ -141,14 +141,14 @@ This is the one flow worth understanding well. Everything else is plumbing aroun
    | different | different and not equal to `mine` | **conflict** |
 
    With no conflicts the backend sends the **full merged project** to the upstream, then reads it back once more to check that the stored data equals what it sent.
-5. **New base.** After a successful save the browser replaces `base` with the project the backend returned. After a conflict, the 409 answer carries `current`, and that becomes the new `base` for the retry. This is what lets the second person decide safely: the retry is compared against the newest data.
+5. **New base.** After a successful save the browser replaces `base` with the project the backend returned. After a conflict, the browser keeps the ORIGINAL `base`. The 409 answer carries `current` only so the dialog can show it. The retry sends the same `base`, the person's `resolutions` and `seen`. If `base` were replaced by `current`, every field the other person changed would look untouched by them and be reverted. The backend re-reads `current` itself, and when a field's current value no longer equals `seen`, it ignores that choice and answers a new 409, so a value nobody saw is never overwritten.
 
 ### The three outcomes
 
 | Status | When | What the browser does |
 |---|---|---|
 | **200** | No conflict. Body: `{ project, saved: true, auto_merged: [...] }`. If a `504` happened but a re-read proved the data was stored, the body also has `confirmed_after_504: true`. | Shows "Saved", uses the returned project as the new `base`. |
-| **409** | A conflict. Body: `type` is `conflict`, with `current`, `conflicts` and `auto_merged`. Also used with `type` `concurrent_overwrite_detected` when someone else saved between our write and our verification read. **Nothing was written upstream.** | Opens the conflict dialog; the person picks "mine" or "theirs" for each conflict; the browser saves again with `base = current` and `resolutions`. |
+| **409** | A conflict. Body: `type` is `conflict`, with `current`, `conflicts` and `auto_merged`. Also used with `type` `concurrent_overwrite_detected` when someone else saved between our write and our verification read. For `conflict`, nothing was written upstream. For `concurrent_overwrite_detected` our write DID land and was then overwritten: `conflicts` is empty and `current` is what the upstream holds now (see `save_project` in `backend/app/main.py`). | Opens the conflict dialog; the person picks "mine" or "theirs" for each conflict; the browser saves again with the ORIGINAL `base`, `resolutions` and `seen`. |
 | **504** | The upstream timed out on every attempt and the backend could not confirm the data. Body carries the last known `current`. | Shows an error with a Retry button. |
 
 > **Warning** A `504` from the upstream is not a failure you can simply retry. The upstream may have stored the change before timing out. `save_project` therefore reads the project again **before** doing anything: if the stored data already equals what it wanted to write, it answers 200 (`confirmed_after_504`); if not, it merges again and retries, at most `MAX_PUT_RETRIES` times (default 2, from `backend/app/config.py`). Retrying blindly would duplicate or overwrite someone else's work.
@@ -195,7 +195,7 @@ The backend answers **409** with this body (shortened) and writes nothing:
 }
 ```
 
-Ana's dialog shows one row: "Award: you say 2027-02-01, they say 2027-05-01". She picks "mine". The browser sends the save again, with `base` set to the `current` from the 409 and `resolutions = {"key_dates:award": "mine"}`. The merge now gives Bid close `2027-01-05` and Award `2027-02-01`, the backend stores it and answers 200. If Ben had saved again in between, Ana would get another 409 instead: the loop is safe.
+Ana's dialog shows one row: "Award: you say 2027-02-01, they say 2027-05-01". She picks "mine". The browser sends the save again, with the same original `base`, `resolutions = {"key_dates:award": "mine"}` and `seen = {"key_dates:award": "2027-05-01"}`. The backend re-reads the upstream, sees that Award is still `2027-05-01`, so the choice applies. The merge now gives Bid close `2027-01-05` and Award `2027-02-01`, the backend stores it and answers 200. If Ben had saved Award again in between (say `2027-06-01`), `seen` would no longer match and Ana would get another 409 showing the new value instead: the loop is safe.
 
 The second case, an insert, shows why labels matter. If instead someone had added "Kickoff 2026-12-01" at the top while Ana edited, the merge keeps "Kickoff" and still applies Ana's two edits to the right dates, because it never looks at positions.
 
