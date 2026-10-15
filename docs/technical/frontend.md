@@ -437,6 +437,32 @@ it('recognises callout words', () => {
 });
 ```
 
+## Frontend · src/pages/DocsHome.tsx
+
+The entry page of the documentation, at `/docs`.
+
+### `frontend/src/pages/DocsHome.tsx::DocsHome`
+
+**What it does:** The screen at `/docs`: a title and three large cards, one per documentation page (General, Technical documentation, Step-by-step guide). Each card has a one-line description and the whole card is a link to its page. Three cards side by side from 900 px wide, one under the other on phones. To add a fourth page, add one object to the `CARDS` list at the top of the file.
+
+**Takes:** Nothing.
+
+**Returns:** The page.
+
+**Example:**
+
+```tsx
+// Verified: run with vitest (src/pages/DocsHome.test.tsx)
+import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import DocsHome from './DocsHome';
+
+it('links the guide card', () => {
+  render(<MemoryRouter><DocsHome /></MemoryRouter>);
+  expect(screen.getByRole('link', { name: /step-by-step guide/i })).toHaveAttribute('href', '/docs/guide');
+});
+```
+
 ## Frontend · src/pages/DocsPage.tsx
 
 The screen behind the three documentation URLs .

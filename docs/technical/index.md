@@ -86,6 +86,7 @@ Every file and folder that matters. If a path is not here, you can ignore it (fo
 | `frontend/src/components/Markdown.tsx` | Shows a Markdown text (the docs) styled with MUI. |
 | `frontend/src/pages/ProjectList.tsx` | The list page: search, filters, sorting, pagination. |
 | `frontend/src/pages/ProjectEdit.tsx` | The edit page: loads a project, tracks changes against the loaded copy, saves, opens the conflict dialog. |
+| `frontend/src/pages/DocsHome.tsx` | The documentation entry page at `/docs`: three cards that link to the three pages. |
 | `frontend/src/pages/DocsPage.tsx` | Shows one of the three documentation pages from the `docs/` folder. |
 | `frontend/src/api.test.ts` | Proves `frontend/src/api.ts` calls only `/api/` paths and turns a 409 into a conflict result. |
 | `frontend/src/components/AppShell.test.tsx` | Proves the menu, the docs sub-bar and the narrow-screen navigation. |
@@ -94,6 +95,7 @@ Every file and folder that matters. If a path is not here, you can ignore it (fo
 | `frontend/src/components/ConflictDialog.test.tsx` | Proves the dialog needs a choice for every row before it lets you save. |
 | `frontend/src/pages/ProjectList.test.tsx` | Proves search, filters, sorting, pagination and the error state of the list. |
 | `frontend/src/pages/ProjectEdit.test.tsx` | Proves loading, change counting, saving with the loaded base, conflict and error flows. |
+| `frontend/src/pages/DocsHome.test.tsx` | Proves `/docs` shows three cards, each with its title, description and link. |
 | `frontend/src/pages/DocsPage.test.tsx` | Proves the Markdown viewer: headings get anchors, the table of contents is built, and the docs pages render. |
 | `frontend/src/setupTests.ts` | Loads the test helpers (jest-dom matchers) before every frontend test. |
 | `frontend/index.html` | The single HTML page that loads the React app. |

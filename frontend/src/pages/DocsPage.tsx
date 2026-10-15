@@ -74,7 +74,7 @@ export default function DocsPage({ page, sources = globbed }: { page: PageKey; s
     <Box sx={{ maxWidth: 1440, mx: 'auto', px: { xs: 2, md: 3 }, display: 'grid', gap: 6, justifyContent: 'center',
       gridTemplateColumns: { xs: 'minmax(0,1fr)', lg: 'minmax(0,720px) 200px' } }}>
       <Box component="article" sx={{ pt: { xs: 2, md: 4 }, pb: 8, minWidth: 0 }}>
-        <Typography sx={{ fontSize: { xs: 16, md: 14 }, color: 'text.secondary', mb: 1 }}>Documentation › {TITLES[page]}</Typography>
+        <Typography sx={{ fontSize: { xs: 16, md: 14 }, color: 'text.secondary', mb: 1 }}><Box component={RouterLink} to="/docs" sx={{ color: 'inherit', display: 'inline-flex', alignItems: 'center', minHeight: 44 }}>Documentation</Box> › {TITLES[page]}</Typography>
         {source === '' ? (
           <Typography component="h1" variant="h4" sx={{ fontWeight: 700 }}>This page is not written yet</Typography>
         ) : (

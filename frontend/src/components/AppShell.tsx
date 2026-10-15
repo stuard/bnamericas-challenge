@@ -10,12 +10,13 @@ const DOCS = [
   { to: '/docs/guide', label: 'Step-by-step guide' },
 ];
 
-/** Page frame: dark AppBar with Projects link and Documentation menu; docs sub-bar only on /docs/*. */
+/** Page frame: dark AppBar with Projects link and Documentation menu; docs sub-bar only on /docs/* pages (not on the /docs entry page). */
 export default function AppShell() {
   const { pathname } = useLocation();
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const narrow = useMediaQuery('(max-width:599.95px)');
-  const inDocs = pathname.startsWith('/docs/');
+  const inDocs = pathname === '/docs' || pathname.startsWith('/docs/');
+  const inDocPage = pathname.startsWith('/docs/');
   const navBtn = (active: boolean) => ({
     color: '#fff',
     height: '100%',
@@ -49,6 +50,7 @@ export default function AppShell() {
               <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)}>
                 <MenuItem component={RouterLink} to="/" onClick={() => setAnchor(null)} sx={{ minHeight: 48 }}>Projects</MenuItem>
                 <Typography variant="overline" sx={{ px: 2, color: 'text.secondary' }}>Documentation</Typography>
+                <MenuItem component={RouterLink} to="/docs" onClick={() => setAnchor(null)} sx={{ minHeight: 48, pl: 4 }}>All documentation</MenuItem>
                 {DOCS.map((d) => (
                   <MenuItem key={d.to} component={RouterLink} to={d.to} onClick={() => setAnchor(null)} sx={{ minHeight: 48, pl: 4 }}>
                     {d.label}
@@ -69,6 +71,7 @@ export default function AppShell() {
                 Documentation
               </Button>
               <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)}>
+                <MenuItem component={RouterLink} to="/docs" onClick={() => setAnchor(null)}>All documentation</MenuItem>
                 {DOCS.map((d) => (
                   <MenuItem key={d.to} component={RouterLink} to={d.to} onClick={() => setAnchor(null)}>
                     {d.label}
@@ -79,7 +82,7 @@ export default function AppShell() {
           )}
         </Toolbar>
       </AppBar>
-      {inDocs && (
+      {inDocPage && (
         <Box component="nav" aria-label="Documentation" sx={{ bgcolor: 'background.paper', borderBottom: '1px solid', borderColor: 'divider', width: '100%', maxWidth: '100vw', minWidth: 0 }}>
           <Box data-testid="docs-tabs" sx={{ maxWidth: 1440, width: '100%', boxSizing: 'border-box', mx: 'auto', px: { xs: 1, md: 3 }, display: 'flex', gap: 1, overflowX: 'auto', overflowY: 'hidden', overscrollBehaviorX: 'contain', WebkitOverflowScrolling: 'touch' }}>
             {DOCS.map((d) => {
