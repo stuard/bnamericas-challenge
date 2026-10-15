@@ -39,6 +39,25 @@ cd frontend && npm test -- --run
 python3 scripts/docs_coverage.py
 ```
 
+## What works and what does not
+
+Works:
+
+- List of projects with search, sector and stage filters, and pages of 10, 25 or 50 rows.
+- Edit form for name, sector, country, stage and key dates (add, change, remove). Linked companies are shown and sent back unchanged.
+- Two people saving the same project: changes to different fields are both kept; a change to the same field opens a dialog where the second person picks the value. Each key date counts as its own field, identified by its label.
+- A 504 from the upstream on save: the backend reads the project again before retrying, so a save that was already applied is not sent twice.
+- The backend keeps nothing between requests, so several copies can run behind a load balancer.
+- Three documentation pages inside the app (`/docs`), with in-page search.
+
+Does not work, or was cut:
+
+- No login, no database, no live updates between open tabs, no merge inside a text field (the whole field is compared), and linked companies are read-only. Why: [DECISIONS.md](DECISIONS.md).
+- The upstream has no version number or ETag. A write that lands between our read and our write is detected afterwards (409 `concurrent_overwrite_detected`), but it has already happened. This is the first thing that breaks with 50 editors.
+- The project list has no "next key date" column: the upstream list endpoint does not return key dates.
+- The conflict dialog lists the fields that merged on their own, but not who changed each one.
+- Renaming a key date only by upper/lower case is ignored. With two dates that share a label, they are compared by position (no seeded project has repeated labels).
+
 ## Documentation
 
 - Step by step for beginners: [docs/guide.md](docs/guide.md), also in the app at `/docs/guide`.
