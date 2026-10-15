@@ -4,9 +4,7 @@
 # Marker forms: "<!-- run -->" (finite command) and "<!-- run server PORT -->" (stays up; started in background).
 set -u
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TASK_WORK=/Users/Shared/zoaftware-trio/bnamericas-project/pack/tasks/20261014-222103-reto-bnamericas-editor-de-proyectos-fast/work
-if [ -d "$TASK_WORK" ]; then LOG_DEFAULT="$TASK_WORK/guide-check.log"; else LOG_DEFAULT="${TMPDIR:-/tmp}/guide-check.log"; fi
-LOG="${GUIDE_CHECK_LOG:-$LOG_DEFAULT}"
+LOG="${GUIDE_CHECK_LOG:-${TMPDIR:-/tmp}/guide-check.log}"
 WAIT=120
 : > "$LOG"
 say() { echo "$*" | tee -a "$LOG"; }
