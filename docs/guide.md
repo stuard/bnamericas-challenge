@@ -240,6 +240,25 @@ Try also this: reload both tabs, change **Country** in tab A and save, then chan
 >
 > You must choose one of the two values in every conflict before the **Save my selection** button turns on. **Back to the form** closes the window without saving anything.
 
+## Glossary
+
+Short meanings of the words used in this guide, each with an example from this project. Come back here whenever a word is not clear.
+
+- **API**: a program that other programs ask for data, instead of people. *Example: our backend asks the records API for project P-1001.*
+- **Backend**: the program that sits between the web page and the data and does the careful work. *Example: our FastAPI backend in `backend/` runs on port 8000 (Terminal 2).*
+- **Frontend**: the part of the app you see and click in the browser. *Example: the project list and the edit form at http://localhost:5173 (Terminal 3).*
+- **Upstream**: a service owned by another team that we use as it is and must not change. *Example: the records API in `upstream/` (Terminal 1) holds about 30 example projects.*
+- **Endpoint**: one address of an API that does one job. *Example: `GET /api/projects` returns the list of projects and `PUT /api/projects/P-1001` saves one.*
+- **Merge**: joining two sets of changes into one result. *Example: if you edit the name and someone else edits the budget of the same project, the backend merges both changes.*
+- **Conflict**: two people changed the same field of the same project, so the app cannot choose for you. *Example: Step 8 makes one on purpose and you pick a value in the "Save my selection" window.*
+- **Terminal**: a window where you type a command and press Enter. *Example: the 3 terminals you keep open, one per program.*
+- **uv**: the tool that installs and runs the Python parts. *Example: `uv run upstream` starts the records API.*
+- **Node**: the tool that runs JavaScript on your computer, needed to start the web page. *Example: `npm run dev` in `frontend/` uses Node to serve the page.*
+- **Port**: a numbered door on your computer where a program listens. *Example: 8081 is the records API, 8000 the backend and 5173 the web page.*
+- **JSON**: a plain-text way to write data as `name: value` pairs. *Example: the backend answers with `{"id": "P-1001", "name": "..."}`.*
+
+---
+
 ## When you finish
 
 Stop each program with **Ctrl + C** in its terminal (3, 2 and 1). The records API forgets all its changes when it stops, so the next start gives you the original 30 projects again.
