@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { Markdown, extractToc } from '../components/Markdown';
-import DocsPage, { splitFaq } from './DocsPage';
+import DocsPage, { matchRanges, splitFaq } from './DocsPage';
 
 const wrap = (ui: React.ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter>);
 
@@ -101,5 +101,31 @@ describe('DocsPage', () => {
     expect(sums).toEqual(['Q1?', 'Q2?']);
     expect(screen.getByRole('heading', { level: 2, name: /After/ })).toBeInTheDocument();
     expect(splitFaq('## No faq here')).toBeNull();
+  });
+
+  it('filters the page to the sections that match, counts them and shows everything again when cleared', () => {
+    const md = '# T\n\nIntro text.\n\n## Install\n\nRun npm.\n\n### Node version\n\nNeeds Node 20.\n\n## Save a project\n\nPress Save.\n\n## Frequently asked questions\n\n### Why npm?\n\nBecause.\n\n### Other?\n\nNo.\n';
+    wrap(<DocsPage page="guide" sources={{ '../../../docs/guide.md': md }} />);
+    const box = screen.getByRole('searchbox', { name: 'Search this page' });
+    const hidden = (t: string) => screen.getByText(t).closest('[data-search-hidden]') !== null;
+    fireEvent.change(box, { target: { value: 'NPM' } });
+    expect(screen.getByText('2 results')).toBeInTheDocument();
+    const results = screen.getByRole('list', { name: 'Search results' });
+    expect(Array.from(results.querySelectorAll('a')).map((a) => a.getAttribute('href'))).toEqual(['#install', '#faq-why-npm']);
+    expect(hidden('Press Save.')).toBe(true);
+    expect(hidden('Intro text.')).toBe(true);
+    expect(hidden('Run npm.')).toBe(false);
+    expect((document.getElementById('faq-why-npm') as HTMLDetailsElement).open).toBe(true);
+    fireEvent.change(box, { target: { value: 'nothing-like-this' } });
+    expect(screen.getByText('No section matches “nothing-like-this”.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear search and show the whole page' }));
+    expect(box).toHaveValue('');
+    expect(document.querySelectorAll('[data-search-hidden]')).toHaveLength(0);
+    expect(screen.queryByRole('list', { name: 'Search results' })).toBeNull();
+  });
+
+  it('matchRanges ignores case and accents', () => {
+    expect(matchRanges('Configuración y configuracion', 'CONFIGURACION')).toEqual([[0, 13], [16, 29]]);
+    expect(matchRanges('anything', '  ')).toEqual([]);
   });
 });

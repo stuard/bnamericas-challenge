@@ -531,6 +531,28 @@ it('splits the FAQ', () => {
 });
 ```
 
+### `frontend/src/pages/DocsPage.tsx::matchRanges`
+
+**What it does:** Finds every place where the words typed in the «Search this page» box appear inside a text, without caring about capital letters or accents («configuracion» finds «Configuración»). The docs page uses it to decide which sections stay visible while searching, to count the results and to paint the matches in yellow.
+
+**Takes:** `text: string`, the text to look in; `query: string`, what the person typed (spaces at the ends are ignored).
+
+**Returns:** a list of `[start, end]` pairs (positions in `text`, `end` not included); an empty list when nothing matches or the query is blank.
+
+**Example:**
+
+```tsx
+// Verified: run with vitest (scratch test next to DocsPage.tsx)
+import { matchRanges } from './DocsPage';
+
+it('finds matches ignoring case and accents', () => {
+  expect(matchRanges('Configuración', 'configuracion')).toEqual([[0, 13]]);
+  expect(matchRanges('anything', '   ')).toEqual([]);
+});
+```
+
+How the search works on the page, in short: `DocsPage` keeps what was typed in `query`. After each change, `applySearch` (inside `DocsPage.tsx`) walks the rendered page, groups the blocks under each H2, H3 or FAQ question, hides with `data-search-hidden` every group whose title or text does not match, and returns the list shown under the box («N results»). Clearing the box removes every `data-search-hidden`, so the whole page is back. To search more kinds of blocks (for example H4), add their tag where `applySearch` checks `H2`/`H3`/`DETAILS`.
+
 ## Frontend · src/pages/ProjectList.tsx
 
 The home screen: the table of all projects, with search, filters, sorting and paging.

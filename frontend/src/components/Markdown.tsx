@@ -179,7 +179,7 @@ export function Markdown({ source }: { source: string }) {
   const lineToId = new Map(extractToc(source).map((t) => [t.line, t.id]));
   return (
     <Box sx={{ fontSize: 16, lineHeight: 1.6, minWidth: 0, '& > h1 + p': { fontSize: { xs: 17, md: 20 }, lineHeight: 1.5, color: 'text.secondary', mb: 4 } }}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={buildComponents(lineToId)}>{source}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml components={buildComponents(lineToId)}>{source}</ReactMarkdown>
     </Box>
   );
 }
